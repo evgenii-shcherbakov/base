@@ -1,5 +1,5 @@
 import { ApiProperty, IntersectionType } from '@nestjs/swagger';
-import { BackendContactTypeEnum } from '@packages/common';
+import { ContactType } from '@packages/common';
 import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 import { EntityDto } from 'dto/models/entity.dto';
 import { Contact, ContactBase } from 'interfaces';
@@ -8,12 +8,7 @@ export class ContactBaseDto implements ContactBase {
   @ApiProperty({ type: Boolean })
   @IsNotEmpty()
   @IsBoolean()
-  isPrimary: boolean;
-
-  @ApiProperty({ type: Boolean })
-  @IsNotEmpty()
-  @IsBoolean()
-  isVisible: boolean;
+  isPublic: boolean;
 
   @ApiProperty({ type: String, required: false })
   @IsOptional()
@@ -26,12 +21,12 @@ export class ContactBaseDto implements ContactBase {
   name: string;
 
   @ApiProperty({
-    enum: BackendContactTypeEnum,
-    enumName: 'BackendContactTypeEnum',
+    enum: ContactType,
+    enumName: 'ContactType',
   })
   @IsNotEmpty()
-  @IsEnum(BackendContactTypeEnum)
-  type: BackendContactTypeEnum;
+  @IsEnum(ContactType)
+  type: ContactType;
 
   @ApiProperty({ type: String })
   @IsNotEmpty()

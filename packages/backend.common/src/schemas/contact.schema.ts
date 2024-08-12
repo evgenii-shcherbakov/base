@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BackendContactTypeEnum, DatabaseCollection } from '@packages/common';
+import { ContactType, DatabaseCollection } from '@packages/common';
 import { Contact } from 'interfaces';
 import { MongoEntity } from 'schemas/abstract/mongo.entity';
 import { MongooseSchemaType } from 'types';
@@ -14,20 +14,17 @@ export class ContactEntity extends MongoEntity implements Contact {
 
   @Prop({
     type: MongooseSchemaType.String,
-    enum: BackendContactTypeEnum,
+    enum: ContactType,
     required: true,
     index: true,
   })
-  type: BackendContactTypeEnum;
+  type: ContactType;
 
   @Prop({ type: MongooseSchemaType.String, required: true })
   value: string;
 
   @Prop({ type: MongooseSchemaType.Boolean, required: true, default: false })
-  isPrimary: boolean;
-
-  @Prop({ type: MongooseSchemaType.Boolean, required: true, default: true })
-  isVisible: boolean;
+  isPublic: boolean;
 }
 
 export const ContactSchema = SchemaFactory.createForClass(ContactEntity);

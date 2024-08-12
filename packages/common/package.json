@@ -13,6 +13,9 @@
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "reset": "rm -rf .turbo dist"
   },
+  "dependencies": {
+    "@packages/http": "*"
+  },
   "devDependencies": {
     "@packages/ts-configs": "*",
     "prettier": "^3.2.5",

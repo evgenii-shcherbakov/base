@@ -3,7 +3,7 @@ import {
   AdminSchema,
   BackendApiGatewaySchema,
   BackendCvSchema,
-  BackendIdentitySchema,
+  BackendPublicSchema,
   BackendMicroserviceSchema,
   DeploySchema,
   FrontendSchema,
@@ -21,12 +21,12 @@ export type DeployEnvironment = EnvironmentOf<typeof DeploySchema>;
 export type FrontendEnvironment = EnvironmentOf<typeof FrontendSchema>;
 
 export const BackendApiGatewayEnvValidator = new EnvValidator(BackendApiGatewaySchema);
-export const BackendIdentityEnvValidator = new EnvValidator(BackendIdentitySchema);
+export const BackendPublicEnvValidator = new EnvValidator(BackendPublicSchema);
 export const BackendCvEnvValidator = new EnvValidator(BackendCvSchema);
 
 export type BackendMicroserviceEnvironment = EnvironmentOf<typeof BackendMicroserviceSchema>;
 export type BackendApiGatewayEnvironment = EnvironmentOf<typeof BackendApiGatewaySchema>;
-export type BackendIdentityEnvironment = EnvironmentOf<typeof BackendIdentitySchema>;
+export type BackendPublicEnvironment = EnvironmentOf<typeof BackendPublicSchema>;
 export type BackendCvEnvironment = EnvironmentOf<typeof BackendCvSchema>;
 
-export type BackendEnvironment = BackendApiGatewayEnvironment & BackendIdentityEnvironment;
+export type BackendEnvironment = BackendApiGatewayEnvironment & BackendPublicEnvironment;

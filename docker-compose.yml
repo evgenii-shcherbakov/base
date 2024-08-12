@@ -52,15 +52,15 @@ services:
         chmod +x /scripts/rs_initializer.sh &&
         /scripts/rs_initializer.sh
 
-  backend.identity:
+  backend.public:
     build:
       context: .
-      dockerfile: ./apps/backend.identity/Dockerfile
+      dockerfile: apps/backend.public/Dockerfile
     restart: on-failure
     environment:
       NODE_ENV: production
       DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/platform?replicaSet=platform
-      IDENTITY_GRPC_URL: 0.0.0.0:8000
+      PUBLIC_GRPC_URL: 0.0.0.0:8000
     networks:
       - private_network
     depends_on:
@@ -79,12 +79,12 @@ services:
       PORT: 5555
       NODE_ENV: production
       DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/platform?replicaSet=platform
-      IDENTITY_GRPC_URL: backend.identity:8000
+      PUBLIC_GRPC_URL: backend.public:8000
     networks:
       - private_network
       - public_network
     depends_on:
-      - backend.identity
+      - backend.public
 
   admin:
     build:

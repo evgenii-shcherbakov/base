@@ -1,7 +1,7 @@
 import Joi from 'joi';
 import {
   BackendCvTransportSchema,
-  BackendIdentityTransportSchema,
+  BackendPublicTransportSchema,
   BackendTransportSchema,
 } from 'schemas/backend-transport.schema';
 import { CommonSchema } from './common.schema';
@@ -21,9 +21,9 @@ export const BackendApiGatewaySchema = {
   ...BackendTransportSchema,
 };
 
-export const BackendIdentitySchema = {
+export const BackendPublicSchema = {
   ...BackendMicroserviceSchema,
-  ...BackendIdentityTransportSchema,
+  ...BackendPublicTransportSchema,
 };
 
 export const BackendCvSchema = {

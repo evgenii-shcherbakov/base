@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Transport } from '@nestjs/microservices';
 import { GrpcOptions } from '@nestjs/microservices/interfaces/microservice-configuration.interface';
 import { ONE } from '@packages/common';
-import { CONTACT_SERVICE_NAME, IDENTITY_PACKAGE_NAME } from 'generated/identity';
+import { PUBLIC_CONTACT_SERVICE_NAME, PUBLIC_PACKAGE_NAME } from 'generated/public';
 import { GrpcClientEnum, GrpcServiceEnum } from 'modules/grpc/grpc.enums';
 import { PROTO_ROOT } from 'modules/grpc/grpc.constants';
 import {
@@ -16,24 +16,24 @@ import { join } from 'node:path';
 @Injectable()
 export class GrpcStrategy {
   private static readonly serviceStrategy: GrpcServiceStrategy = {
-    [GrpcServiceEnum.IDENTITY_CONTACT]: {
-      packageName: IDENTITY_PACKAGE_NAME,
-      client: GrpcClientEnum.IDENTITY,
-      serviceName: CONTACT_SERVICE_NAME,
+    [GrpcServiceEnum.PUBLIC_CONTACT]: {
+      packageName: PUBLIC_PACKAGE_NAME,
+      client: GrpcClientEnum.PUBLIC,
+      serviceName: PUBLIC_CONTACT_SERVICE_NAME,
     },
-    [GrpcServiceEnum.IDENTITY_EXPERIENCE]: {
-      packageName: IDENTITY_PACKAGE_NAME,
-      client: GrpcClientEnum.IDENTITY,
-      serviceName: CONTACT_SERVICE_NAME,
+    [GrpcServiceEnum.PUBLIC_EXPERIENCE]: {
+      packageName: PUBLIC_PACKAGE_NAME,
+      client: GrpcClientEnum.PUBLIC,
+      serviceName: PUBLIC_CONTACT_SERVICE_NAME, // !
     },
   };
 
   private static readonly clientStrategy: GrpcClientStrategy = {
-    [GrpcClientEnum.IDENTITY]: {
+    [GrpcClientEnum.PUBLIC]: {
       url: process.env.IDENTITY_GRPC_URL,
-      packageName: IDENTITY_PACKAGE_NAME,
-      protoPath: join(PROTO_ROOT, 'identity.proto'),
-      services: [GrpcServiceEnum.IDENTITY_EXPERIENCE, GrpcServiceEnum.IDENTITY_CONTACT],
+      packageName: PUBLIC_PACKAGE_NAME,
+      protoPath: join(PROTO_ROOT, 'public.proto'),
+      services: [GrpcServiceEnum.PUBLIC_CONTACT, GrpcServiceEnum.PUBLIC_EXPERIENCE],
     },
   };
 

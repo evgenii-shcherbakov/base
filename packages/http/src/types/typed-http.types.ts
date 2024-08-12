@@ -1,7 +1,7 @@
 import { TypedHttpAction } from 'enums';
 import { HttpClientClass } from 'interfaces';
 import { RequestQuery } from 'types/http.types';
-import { RouteParamsOf } from 'types/utility.types';
+import { ClearedUrlOf, RouteParamsOf } from 'types/utility.types';
 
 export type HttpMethodType = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
@@ -29,7 +29,7 @@ export interface TypedHttpEndpointBaseClass<
   Response = undefined,
 > {
   readonly [TypedHttpAction.SCHEMA]: TypedHttpEndpointSchema<
-    `${ControllerUrl}/${Url}`,
+    ClearedUrlOf<`${ControllerUrl}/${Url}`>,
     Method,
     Request,
     Response
@@ -150,3 +150,10 @@ export interface TypedHttpClientClass<ClientSchema extends TypedHttpClientSchema
   extends HttpClientClass {
   readonly typed: TypedHttpClientSchemaMethods<ClientSchema>;
 }
+
+// export interface TypedHttpControllerInterface<
+//   ControllerUrl extends string,
+//   EndpointsSchema extends TypedHttpControllerEndpointsSchema<ControllerUrl>,
+// > {
+//   [Method in keyof EndpointsSchema](): Promise<void>;
+// }

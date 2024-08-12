@@ -1,9 +1,9 @@
 export enum GrpcClientEnum {
-  IDENTITY = 'identity',
+  PUBLIC = 'public',
   // GRPC CLIENT ENUM ITEMS
 }
 
 export enum GrpcServiceEnum {
-  IDENTITY_CONTACT = 'identity.contact',
-  IDENTITY_EXPERIENCE = 'identity.experience',
+  PUBLIC_CONTACT = 'public.contact',
+  PUBLIC_EXPERIENCE = 'public.experience',
 }

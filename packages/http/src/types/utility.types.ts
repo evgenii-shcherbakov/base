@@ -1,26 +1,42 @@
-type RequestParam = string | symbol | number | boolean;
+export type RequestParam = string | symbol | number | boolean;
 
-export type SliceRequestPath<
-  SlicedPart extends string,
-  Path extends string,
-> = Path extends `${SlicedPart}/${infer Rest}` ? Rest : '';
+export type ClearedUrlOf<Url extends string> = Url extends `${'/' | '//'}${infer Rest}`
+  ? ClearedUrlOf<Rest>
+  : Url extends `${infer Rest}${'/' | '//'}`
+    ? ClearedUrlOf<Rest>
+    : Url extends `${infer Prefix}//${infer Suffix}`
+      ? `${Prefix}/${Suffix}`
+      : Url;
 
-export type RouteParamsOf<Endpoint extends string> =
-  Endpoint extends `${infer Start}:${infer Param}/${infer Rest}`
-    ? { [K in Param | keyof RouteParamsOf<Rest>]: RequestParam }
-    : Endpoint extends `${infer Start}:${infer Param}`
-      ? { [K in Param]: RequestParam }
-      : undefined;
+export type SplitString<Str extends string, Delimiter extends string> = string extends Str
+  ? string[]
+  : Str extends ''
+    ? []
+    : Str extends `${infer First}${Delimiter}${infer Rest}`
+      ? [First, ...SplitString<Rest, Delimiter>]
+      : [Str];
 
-export type TransformUrlToIdentifier<Url extends string> =
-  Url extends `${infer Prefix}/${infer Rest}`
-    ? `${Capitalize<TransformUrlToIdentifier<Prefix>>}${Capitalize<TransformUrlToIdentifier<Rest>>}`
-    : Url extends `${infer Prefix}/:${infer Rest}`
-      ? `${Capitalize<TransformUrlToIdentifier<Prefix>>}${Capitalize<TransformUrlToIdentifier<Rest>>}`
-      : Url extends `${infer Prefix}:${infer Rest}`
-        ? `${Capitalize<TransformUrlToIdentifier<Prefix>>}${Capitalize<TransformUrlToIdentifier<Rest>>}`
-        : Url extends `:${infer Rest}`
-          ? `${Capitalize<TransformUrlToIdentifier<Rest>>}`
-          : Url extends `/${infer Rest}`
-            ? `${Capitalize<TransformUrlToIdentifier<Rest>>}`
-            : Capitalize<Url>;
+export type RouteParamsObject<UrlSegments extends string[]> = UrlSegments extends [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends string
+    ? Rest extends string[]
+      ? First extends `:${infer Segment}`
+        ? Segment extends `${infer Param}?`
+          ? {
+              [K in Param]?: RequestParam;
+            } & RouteParamsObject<Rest>
+          : {
+              [K in Segment]: RequestParam;
+            } & RouteParamsObject<Rest>
+        : RouteParamsObject<Rest>
+      : never
+    : never
+  : {};
+
+export type RouteParamsOf<Url extends string> = keyof RouteParamsObject<
+  SplitString<Url, '/'>
+> extends never
+  ? undefined
+  : RouteParamsObject<SplitString<Url, '/'>>;

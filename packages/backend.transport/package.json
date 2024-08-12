@@ -15,9 +15,9 @@
       "default": "./dist/generated/common.js",
       "types": "./dist/generated/common.d.ts"
     },
-    "./generated/identity": {
-      "default": "./dist/generated/identity.js",
-      "types": "./dist/generated/identity.d.ts"
+    "./generated/public": {
+      "default": "./dist/generated/public.js",
+      "types": "./dist/generated/public.d.ts"
     }
   },
   "scripts": {

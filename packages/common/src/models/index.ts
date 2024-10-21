@@ -1,1 +1,1 @@
-export * from './backend.model';
+export * from 'models/main.model';

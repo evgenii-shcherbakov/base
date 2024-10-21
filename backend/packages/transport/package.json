@@ -1,0 +1,54 @@
+{
+  "name": "@backend/transport",
+  "private": true,
+  "author": "Evgenii Shcherbakov <iipekolict@gmail.com>",
+  "license": "MIT",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./generated/common": {
+      "types": "./dist/generated/common.d.ts",
+      "default": "./dist/generated/common.js"
+    },
+    "./generated/main": {
+      "types": "./dist/generated/main.d.ts",
+      "default": "./dist/generated/main.js"
+    }
+  },
+  "scripts": {
+    "format": "prettier src --write --config ../../.prettierrc",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "dev": "yarn build -- --watch",
+    "build": "yarn proto && tsup src/index.ts src/generated/*.ts --format cjs --dts --onSuccess \"cp -a src/proto/. dist/proto\"",
+    "proto": "node scripts/generate-proto.js",
+    "reset": "rm -rf .turbo dist node_modules"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/config": "^3.2.2",
+    "@nestjs/microservices": "^10.3.7",
+    "@packages/common": "*",
+    "@packages/environment": "*",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@packages/ts-configs": "*",
+    "@types/node": "^20.3.1",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.42.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.2.5",
+    "ts-proto": "^2.0.3",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3",
+    "yarn": "^1.22.22"
+  }
+}

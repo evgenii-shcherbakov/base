@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
-export const BackendPublicTransportSchema = {
-  PUBLIC_GRPC_URL: Joi.string().optional(),
+export const BackendMainTransportSchema = {
+  MAIN_GRPC_URL: Joi.string().optional(),
 };
 
 export const BackendCvTransportSchema = {
@@ -9,6 +9,6 @@ export const BackendCvTransportSchema = {
 };
 
 export const BackendTransportSchema = {
-  ...BackendPublicTransportSchema,
+  ...BackendMainTransportSchema,
   // ...BackendCvTransportSchema,
 };

@@ -1,0 +1,1 @@
+export const GRPC_CONFIG_SERVICE = Symbol('GRPC_CONFIG_SERVICE');

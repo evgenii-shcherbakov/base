@@ -52,15 +52,15 @@ services:
         chmod +x /scripts/rs_initializer.sh &&
         /scripts/rs_initializer.sh
 
-  backend.public:
+  backend.main:
     build:
       context: .
-      dockerfile: apps/backend.public/Dockerfile
+      dockerfile: ./backend/apps/main/Dockerfile
     restart: on-failure
     environment:
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/platform?replicaSet=platform
-      PUBLIC_GRPC_URL: 0.0.0.0:8000
+      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/main?replicaSet=platform
+      MAIN_GRPC_URL: 0.0.0.0:8000
     networks:
       - private_network
     depends_on:
@@ -71,32 +71,31 @@ services:
   backend.api-gateway:
     build:
       context: .
-      dockerfile: ./apps/backend.api-gateway/Dockerfile
+      dockerfile: ./backend/apps/api-gateway/Dockerfile
     restart: on-failure
     ports:
       - '5555:5555'
     environment:
       PORT: 5555
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/platform?replicaSet=platform
-      PUBLIC_GRPC_URL: backend.public:8000
+      MAIN_GRPC_URL: backend.main:8000
     networks:
       - private_network
       - public_network
     depends_on:
       - backend.public
 
-  admin:
+  admin.main:
     build:
       context: .
-      dockerfile: ./apps/admin/Dockerfile
+      dockerfile: ./admin/apps/main/Dockerfile
     restart: on-failure
     ports:
       - '3336:3336'
     environment:
       PORT: 3336
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/platform?replicaSet=platform
+      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/main?replicaSet=platform
       PAYLOAD_SECRET: 12345
     networks:
       - private_network

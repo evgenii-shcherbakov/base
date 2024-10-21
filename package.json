@@ -1,5 +1,5 @@
 {
-  "name": "evgenii-shcherbakov.github.io",
+  "name": "platform",
   "private": true,
   "author": "Evgenii Shcherbakov <iipekolict@gmail.com>",
   "license": "MIT",
@@ -43,7 +43,14 @@
   },
   "packageManager": "yarn@1.22.22",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "admin/apps/*",
+    "admin/packages/*",
+    "backend/apps/*",
+    "backend/packages/*",
+    "frontend/apps/*",
+    "frontend/packages/*",
+    "packages/*",
+    "packages/grpc/adapters/*",
+    "libraries/*"
   ]
 }

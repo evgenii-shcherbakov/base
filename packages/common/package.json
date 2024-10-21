@@ -14,7 +14,7 @@
     "reset": "rm -rf .turbo dist"
   },
   "dependencies": {
-    "@packages/http": "*"
+    "@evgenii-shcherbakov/http": "*"
   },
   "devDependencies": {
     "@packages/ts-configs": "*",

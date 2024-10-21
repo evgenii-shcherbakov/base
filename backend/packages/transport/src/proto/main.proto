@@ -1,0 +1,36 @@
+syntax = 'proto3';
+
+package main;
+
+import "models/contact.proto";
+
+//import "google/protobuf/timestamp.proto";
+//
+//message RpcContactQuery {
+//  optional string id = 1;
+//  repeated string ids = 2;
+//  optional string name = 3;
+//  optional bool isPublic = 4;
+//}
+//
+//message RpcContactRequest {
+//  RpcContactQuery query = 1;
+//}
+//
+//message RpcContact {
+//  string _id = 1;
+//  optional string link = 2;
+//  string name = 3;
+//  string value = 4;
+//  bool isPublic = 6;
+//  google.protobuf.Timestamp createdAt = 8;
+//  optional google.protobuf.Timestamp updatedAt = 9;
+//}
+//
+//message RpcContactList {
+//  repeated RpcContact items = 1;
+//}
+
+service ContactService {
+  rpc getAllPublic (contact.RpcContactRequest) returns (contact.RpcContactList) {}
+}

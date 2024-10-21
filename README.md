@@ -1,4 +1,4 @@
-# evgenii-shcherbakov.github.io
+# platform
 My personal website
 
 ### Requirements
@@ -85,8 +85,8 @@ apps/
 ### Usage
 
 ```shell
-git clone git@github.com:evgenii-shcherbakov/evgenii-shcherbakov.github.io.git
-cd evgenii-shcherbakov.github.io
+git clone git@github.com:evgenii-shcherbakov/platform.git
+cd platform
 yarn install # npx yarn
 ```
 

@@ -1,0 +1,17 @@
+{
+  "name": "@packages/grpc",
+  "private": true,
+  "author": "Evgenii Shcherbakov <iipekolict@gmail.com>",
+  "license": "MIT",
+  "version": "0.0.0",
+  "scripts": {
+    "nest": "node scripts/generate-nest.js && turbo run build --filter=@packages/grpc.nest",
+    "web": "node scripts/generate-web.js && turbo run build --filter=@packages/grpc.web",
+    "build": "yarn nest & yarn web"
+  },
+  "devDependencies": {
+    "change-case-all": "^2.1.0",
+    "ts-proto": "^2.0.3",
+    "yarn": "^1.22.22"
+  }
+}

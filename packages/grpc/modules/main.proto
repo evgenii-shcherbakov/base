@@ -1,0 +1,9 @@
+syntax = 'proto3';
+
+package main;
+
+import "models/contact.proto";
+
+service ContactService {
+  rpc getMany (contact.RpcContactRequest) returns (contact.RpcContactList) {}
+}

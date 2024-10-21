@@ -33,28 +33,35 @@
 //   };
 // };
 
-import { TypedHttpClient, TypedHttpController, TypedHttpEndpoint } from '@packages/http';
+import { TypedHttpClient, TypedHttpController, TypedHttpEndpoint } from '@evgenii-shcherbakov/http';
 import {
-  BackendContact,
-  BackendCv,
-  BackendExperience,
-  BackendIdentity,
-  BackendJob,
-  BackendProject,
+  // BackendContact,
+  // BackendCv,
+  // BackendExperience,
+  // BackendIdentity,
+  // BackendJob,
+  // BackendProject,
+  MainContact,
+  // MainExperience,
+  // MainJob,
+  // MainProject,
 } from 'models';
 
 export const BackendTypedHttpSchema = {
-  public: new TypedHttpController('public').declareEndpoints({
-    getIdentity: TypedHttpEndpoint.get('identity/current').response<BackendIdentity>(),
-    getContacts: TypedHttpEndpoint.get('contacts').response<BackendContact[]>(),
-    getExperience: TypedHttpEndpoint.get('experience').response<BackendExperience[]>(),
-    getJobs: TypedHttpEndpoint.get('jobs').response<BackendJob[]>(),
-    getProjects: TypedHttpEndpoint.get('projects').response<BackendProject[]>(),
+  main: new TypedHttpController('main').declareEndpoints({
+    getContacts: TypedHttpEndpoint.get('contacts').response<MainContact[]>(),
   }),
-  cv: new TypedHttpController('cv').declareEndpoints({
-    getPrimary: TypedHttpEndpoint.get('').response<BackendCv>(),
-    getByAlias: TypedHttpEndpoint.get(':alias').response<BackendCv>(),
-  }),
+  // public: new TypedHttpController('public').declareEndpoints({
+  //   // getIdentity: TypedHttpEndpoint.get('identity/current').response<BackendIdentity>(),
+  //   getContacts: TypedHttpEndpoint.get('contacts').response<MainContact[]>(),
+  //   getExperience: TypedHttpEndpoint.get('experience').response<MainExperience[]>(),
+  //   getJobs: TypedHttpEndpoint.get('jobs').response<MainJob[]>(),
+  //   getProjects: TypedHttpEndpoint.get('projects').response<MainProject[]>(),
+  // }),
+  // cv: new TypedHttpController('cv').declareEndpoints({
+  //   // getPrimary: TypedHttpEndpoint.get('').response<BackendCv>(),
+  //   getByAlias: TypedHttpEndpoint.get(':alias').response<BackendCv>(),
+  // }),
 } as const;
 
 // const backendClient = new TypedHttpClient(BackendTypedHttpSchema, '');

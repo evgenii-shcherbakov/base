@@ -1,5 +1,5 @@
 {
-  "name": "platform",
+  "name": "base",
   "private": true,
   "author": "Evgenii Shcherbakov <iipekolict@gmail.com>",
   "license": "MIT",
@@ -50,7 +50,7 @@
     "frontend/apps/*",
     "frontend/packages/*",
     "packages/*",
-    "packages/grpc/adapters/*",
+    "packages/**/*",
     "libraries/*"
   ]
 }

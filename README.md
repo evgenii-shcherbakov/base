@@ -1,4 +1,4 @@
-# platform
+# base
 My personal website
 
 ### Requirements
@@ -85,8 +85,8 @@ apps/
 ### Usage
 
 ```shell
-git clone git@github.com:evgenii-shcherbakov/platform.git
-cd platform
+git clone git@github.com:evgenii-shcherbakov/base.git
+cd base
 yarn install # npx yarn
 ```
 

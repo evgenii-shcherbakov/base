@@ -1,8 +1,0 @@
-import { IntersectionType } from '@nestjs/swagger';
-import {} from 'class-validator';
-import { EntityDto } from 'dto/models/entity.dto';
-import { {{ pascalCase name }}, {{ pascalCase name }}Base } from 'interfaces';
-
-export class {{ pascalCase name }}BaseDto implements {{ pascalCase name }}Base {}
-
-export class {{ pascalCase name }}Dto extends IntersectionType({{ pascalCase name }}BaseDto, EntityDto) implements {{ pascalCase name }} {}

@@ -1,7 +1,1 @@
-// import { join } from 'node:path';
-//
-// export const PROTO_ROOT = join(
-//   __dirname,
-//   '../../../..',
-//   'node_modules/@backend/transport/dist/proto',
-// );
+export const GRPC_CONFIG_SERVICE = Symbol('GRPC_CONFIG_SERVICE');

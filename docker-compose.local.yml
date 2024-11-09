@@ -1,48 +1,48 @@
 version: '3'
 
 services:
-  mongodb1:
+  db1:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27017:27017'
     networks:
       - private_network
       - public_network
     volumes:
-      - mongo_data_1:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27017' ]
+      - db_data_1:/data/db
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27017' ]
 
-  mongodb2:
+  db2:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27018:27018'
     networks:
       - private_network
       - public_network
     volumes:
-      - mongo_data_2:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27018' ]
+      - db_data_2:/data/db
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27018' ]
 
-  mongodb3:
+  db3:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27019:27019'
     networks:
       - private_network
       - public_network
     volumes:
-      - mongo_data_3:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27019' ]
+      - db_data_3:/data/db
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27019' ]
 
   mongodb-initializer:
     image: mongo:latest
     depends_on:
-      - mongodb1
-      - mongodb2
-      - mongodb3
+      - db1
+      - db2
+      - db3
     networks:
       - private_network
     volumes:
@@ -61,6 +61,6 @@ networks:
     driver: bridge
 
 volumes:
-  mongo_data_1:
-  mongo_data_2:
-  mongo_data_3:
+  db_data_1:
+  db_data_2:
+  db_data_3:

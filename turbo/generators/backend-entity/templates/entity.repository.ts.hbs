@@ -1,6 +1,0 @@
-import { {{ pascalCase name }} } from 'interfaces';
-import { DatabaseRepository } from 'repositories';
-
-export const {{ constantCase name }}_REPOSITORY = Symbol('{{ pascalCase name }}Repository');
-
-export interface {{ pascalCase name }}Repository extends DatabaseRepository<{{ pascalCase name }}> {}

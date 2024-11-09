@@ -1,6 +1,8 @@
 {
-  "extends": ["//"],
-  "pipeline": {
+  "extends": [
+    "//"
+  ],
+  "tasks": {
     "build": {
       "inputs": [
         "src/**/*.ts",
@@ -10,7 +12,9 @@
         "package.json",
         "tsconfig*.json"
       ],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }

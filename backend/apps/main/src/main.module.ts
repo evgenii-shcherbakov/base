@@ -1,16 +1,15 @@
-import { CommonModule, PersistenceModule } from '@backend/common';
-import { GrpcModule } from '@backend/grpc';
+import { MongoModule } from '@backend/persistence';
+import { GrpcModule } from '@backend/transport';
 import { Module } from '@nestjs/common';
-import { BackendMainEnvValidator } from '@packages/environment';
+import { ConfigModule } from '@nestjs/config';
+import { config } from 'config';
 import { ContactModule } from 'modules/contact/contact.module';
 
 @Module({
   imports: [
-    CommonModule.register({
-      envValidator: BackendMainEnvValidator,
-    }),
+    ConfigModule.forRoot({ isGlobal: true, load: [config] }),
+    MongoModule.forRoot(),
     GrpcModule.forRoot(),
-    PersistenceModule.forRoot(),
     ContactModule,
   ],
 })

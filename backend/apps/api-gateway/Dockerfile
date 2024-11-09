@@ -2,8 +2,10 @@ FROM node:18-alpine AS base
 
 FROM base AS installer
 WORKDIR /app
-COPY ./apps/backend.api-gateway ./apps/backend.api-gateway
+COPY ./backend/apps/api-gateway ./backend/apps/api-gateway
+COPY ./backend/packages ./backend/packages
 COPY ./packages ./packages
+COPY ./libraries ./libraries
 COPY ./package.json ./package.json
 COPY ./.gitignore ./.gitignore
 RUN yarn install --mode update-lockfile
@@ -24,5 +26,5 @@ FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app .
-EXPOSE 5555
+EXPOSE 10000
 CMD yarn prod:backend.api-gateway

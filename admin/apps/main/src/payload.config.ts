@@ -8,6 +8,10 @@ import { UserCollection } from './collections/user.collection';
 
 const collections = [UserCollection, ContactCollection];
 
+const mongoUrl =
+  process.env.MONGODB_URL ??
+  'mongodb://localhost:27017,localhost:27018,localhost:27019/main?replicaSet=base';
+
 export default buildConfig({
   admin: {
     user: UserCollection.slug,
@@ -22,6 +26,6 @@ export default buildConfig({
     schemaOutputFile: path.resolve(__dirname, 'generated-schema.graphql'),
   },
   db: mongooseAdapter({
-    url: process.env.DATABASE_URL,
+    url: mongoUrl,
   }),
 });

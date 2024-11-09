@@ -1,8 +1,6 @@
-import { BackendApiGatewayEnvironment } from '@packages/environment';
-
 declare global {
   namespace NodeJS {
-    interface ProcessEnv extends BackendApiGatewayEnvironment {}
+    interface ProcessEnv {}
   }
 }
 

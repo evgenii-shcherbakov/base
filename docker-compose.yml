@@ -1,45 +1,45 @@
 version: '3'
 
 services:
-  mongodb1:
+  db1:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27017:27017'
     networks:
       - private_network
     volumes:
       - mongo_data_1:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27017' ]
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27017' ]
 
-  mongodb2:
+  db2:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27018:27018'
     networks:
       - private_network
     volumes:
       - mongo_data_2:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27018' ]
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27018' ]
 
-  mongodb3:
+  db3:
     image: mongo:latest
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '27019:27019'
     networks:
       - private_network
     volumes:
       - mongo_data_3:/data/db
-    entrypoint: [ '/usr/bin/mongod', '--replSet', 'platform', '--bind_ip_all', '--port', '27019' ]
+    entrypoint: [ '/usr/bin/mongod', '--replSet', 'base', '--bind_ip_all', '--port', '27019' ]
 
   mongodb-initializer:
     image: mongo:latest
     depends_on:
-      - mongodb1
-      - mongodb2
-      - mongodb3
+      - db1
+      - db2
+      - db3
     networks:
       - private_network
     volumes:
@@ -56,69 +56,71 @@ services:
     build:
       context: .
       dockerfile: ./backend/apps/main/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
+#    ports:
+#      - '8000:8000'
     environment:
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/main?replicaSet=platform
+      MONGODB_URL: mongodb://db1:27017,db2:27018,db3:27019/main?replicaSet=base
       MAIN_GRPC_URL: 0.0.0.0:8000
     networks:
       - private_network
     depends_on:
-      - mongodb1
-      - mongodb2
-      - mongodb3
+      - db1
+      - db2
+      - db3
 
   backend.api-gateway:
     build:
       context: .
       dockerfile: ./backend/apps/api-gateway/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
     ports:
-      - '5555:5555'
+      - '10000:10000'
     environment:
-      PORT: 5555
+      PORT: 10000
       NODE_ENV: production
       MAIN_GRPC_URL: backend.main:8000
     networks:
       - private_network
       - public_network
     depends_on:
-      - backend.public
+      - backend.main
 
   admin.main:
     build:
       context: .
       dockerfile: ./admin/apps/main/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - '3336:3336'
     environment:
       PORT: 3336
       NODE_ENV: production
-      DATABASE_URL: mongodb://mongodb1:27017,mongodb2:27018,mongodb3:27019/main?replicaSet=platform
+      MONGODB_URL: mongodb://db1:27017,db2:27018,db3:27019/main?replicaSet=base
       PAYLOAD_SECRET: 12345
     networks:
       - private_network
       - public_network
     depends_on:
-      - mongodb1
-      - mongodb2
-      - mongodb3
+      - db1
+      - db2
+      - db3
 #      - backend.api-gateway
 
 #  frontend:
 #    build:
 #      context: .
 #      dockerfile: ./apps/frontend/Dockerfile
-#    restart: always
+#    restart: unless-stopped
 #    ports:
 #      - '${PORT:-3000}:3000'
 #    environment:
-#      NEXT_PUBLIC_BACKEND_URL: http://backend:5555
+#      NEXT_PUBLIC_BACKEND_URL: http://backend.api-gateway:10000
 #    networks:
-#      - app_network
+#      - public_network
 #    depends_on:
-#      - backend
+#      - backend.api-gateway
 
 networks:
   private_network:

@@ -1,20 +1,24 @@
 import {
+  ContactRequest,
+  ContactList,
   ContactServiceControllerMethods,
   ContactServiceController,
-  RpcContactRequest,
-  RpcContactList,
 } from '@packages/grpc.nest';
 import { Controller, Inject } from '@nestjs/common';
-import { PUBLIC_SERVICE, ContactService } from 'modules/contact/service/contact.service';
+import {
+  CONTACT_REPOSITORY,
+  ContactRepository,
+} from 'modules/contact/repository/contact.repository';
 
 @Controller()
 @ContactServiceControllerMethods()
 export class ContactRpcController implements ContactServiceController {
-  constructor(@Inject(PUBLIC_SERVICE) private readonly publicService: ContactService) {}
+  constructor(@Inject(CONTACT_REPOSITORY) private readonly contactRepository: ContactRepository) {}
 
-  async getMany(request: RpcContactRequest): Promise<RpcContactList> {
+  async getMany(request: ContactRequest): Promise<ContactList> {
+    console.log(await this.contactRepository.getMany(request.query));
     return {
-      items: await this.publicService.getPublicContacts(request.query),
+      items: await this.contactRepository.getMany(request.query),
     };
   }
 }

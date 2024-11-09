@@ -1,14 +1,12 @@
-import { CommonModule } from '@backend/common';
-import { GrpcModule } from '@backend/grpc';
+import { GrpcModule } from '@backend/transport';
 import { Module } from '@nestjs/common';
-import { BackendApiGatewayEnvValidator } from '@packages/environment';
+import { ConfigModule } from '@nestjs/config';
+import { config } from 'config';
 import { MainModule } from 'modules/main/main.module';
 
 @Module({
   imports: [
-    CommonModule.register({
-      envValidator: BackendApiGatewayEnvValidator,
-    }),
+    ConfigModule.forRoot({ isGlobal: true, load: [config] }),
     GrpcModule.forRoot(),
     MainModule,
   ],

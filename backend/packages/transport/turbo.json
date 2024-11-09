@@ -1,6 +1,6 @@
 {
   "extends": ["//"],
-  "pipeline": {
+  "tasks": {
     "build": {
       "inputs": ["src/**/*.ts", "package.json", "ts-config*.json"],
       "outputs": ["dist/**"]

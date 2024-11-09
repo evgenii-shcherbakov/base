@@ -1,8 +1,8 @@
-import { DatabaseCollection, ContactType } from '@packages/common';
+import { MongoMainCollection } from '@packages/common';
 import { CollectionConfig } from 'payload/types';
 
 export const ContactCollection: CollectionConfig = {
-  slug: DatabaseCollection.CONTACT,
+  slug: MongoMainCollection.CONTACT,
   admin: {
     useAsTitle: 'name',
     listSearchableFields: ['name', 'value', 'type'],
@@ -25,20 +25,8 @@ export const ContactCollection: CollectionConfig = {
       required: false,
     },
     {
-      type: 'select',
-      name: 'type',
-      options: Object.values(ContactType),
-      required: true,
-    },
-    {
       type: 'checkbox',
-      name: 'isPrimary',
-      required: true,
-      defaultValue: true,
-    },
-    {
-      type: 'checkbox',
-      name: 'isVisible',
+      name: 'isPublic',
       required: true,
       defaultValue: true,
     },

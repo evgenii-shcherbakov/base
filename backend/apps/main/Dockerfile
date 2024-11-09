@@ -2,8 +2,10 @@ FROM node:18-alpine AS base
 
 FROM base AS installer
 WORKDIR /app
-COPY ./apps/backend.public ./apps/backend.public
+COPY ./backend/apps/main ./backend/apps/main
+COPY ./backend/packages ./backend/packages
 COPY ./packages ./packages
+COPY ./libraries ./libraries
 COPY ./package.json ./package.json
 COPY ./.gitignore ./.gitignore
 RUN yarn install --mode update-lockfile
@@ -18,11 +20,11 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=installer /app .
 COPY ./turbo.json ./turbo.json
-RUN yarn build:backend.public
+RUN yarn build:backend.main
 
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app .
 EXPOSE 8000
-CMD yarn prod:backend.public
+CMD yarn prod:backend.main

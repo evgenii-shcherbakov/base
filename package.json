@@ -33,15 +33,19 @@
     "docker:local": "docker-compose -f docker-compose.local.yml -p base-local up --build",
     "docker": "docker-compose -f docker-compose.yml -p base up --build"
   },
+  "dependencies": {
+    "lodash": "4.17.21"
+  },
   "devDependencies": {
     "@turbo/gen": "2.2.3",
+    "@types/lodash": "4.14.202",
     "@types/node": "^20.3.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "change-case-all": "^2.1.0",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "change-case-all": "^2.1.0",
     "prettier": "3.3.3",
     "tsup": "8.3.5",
     "turbo": "2.2.3",

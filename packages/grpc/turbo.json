@@ -2,7 +2,7 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["proto/**"],
+      "inputs": ["proto/**", "turbo/generators/compile/**"],
       "outputs": ["proto/**", "adapters/**"]
     }
   }

@@ -24,6 +24,7 @@ export class NestAdapter extends GrpcAdapter {
       '--ts_proto_opt=snakeToCamel=false',
       '--ts_proto_opt=unrecognizedEnum=false',
       '--ts_proto_opt=stringEnums=true',
+      // '--ts_proto_opt=forceLong=number',
       '--ts_proto_opt=useMapType=true',
       '--ts_proto_opt=addGrpcMetadata=true',
       '--ts_proto_opt=useSnakeTypeName=false',

@@ -11,4 +11,4 @@ import { MainModule } from 'modules/main/main.module';
     MainModule,
   ],
 })
-export class ApiGatewayModule {}
+export class AppModule {}

@@ -5,9 +5,5 @@ package main;
 import "models/contact.proto";
 
 service ContactService {
-  rpc getMany (contact.ContactRequest) returns (contact.ContactList) {}
-}
-
-service MainContactService {
-  rpc getMany (contact.ContactRequest) returns (contact.ContactList) {}
+  rpc getMany (models.contact.ContactRequest) returns (models.contact.ContactList) {}
 }

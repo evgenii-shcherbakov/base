@@ -8,9 +8,6 @@ const env = validateEnv(BackendGrpcValidationSchema);
 
 const commonGrpcOptions: Partial<GrpcOptions['options']> = {
   loader: {
-    // objects: true,
-    // oneofs: true,
-    // json: true,
     arrays: true,
     keepCase: true,
     enums: String,

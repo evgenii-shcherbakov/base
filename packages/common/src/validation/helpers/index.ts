@@ -2,10 +2,15 @@ import dotenv from 'dotenv';
 import Joi, { type AnySchema } from 'joi';
 import { EnvironmentOf } from 'validation/types';
 
+let isEnvParsed = false;
+
 export const validateEnv = <ValidationSchema extends Record<string, AnySchema>>(
   schema: ValidationSchema,
 ): EnvironmentOf<ValidationSchema> => {
-  dotenv.config();
+  if (!isEnvParsed) {
+    dotenv.config();
+    isEnvParsed = true;
+  }
 
   const result = Joi.object(schema).validate(process.env, { allowUnknown: true });
 

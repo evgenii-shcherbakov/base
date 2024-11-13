@@ -21,12 +21,7 @@ export class MainWebController {
   @Method({ type: [ContactDto] })
   getContacts(@Query() query: ContactQueryDto): Observable<ContactDto[]> {
     return this.contactServiceClient.getMany({ query }).pipe(
-      map((response) =>
-        response.items.map((item) => {
-          console.log(item);
-          return plainToInstance(ContactDto, item);
-        }),
-      ),
+      map((response) => response.items.map((item) => plainToInstance(ContactDto, item))),
       catchError((exception) => throwError(() => new RpcException(exception))),
     );
   }

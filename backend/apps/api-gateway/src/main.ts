@@ -4,11 +4,11 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from 'common/filters/http-exception.filter';
 import { RpcExceptionFilter } from 'common/filters/rpc-exception.filter';
-import { ApiGatewayModule } from 'api-gateway.module';
+import { AppModule } from 'app.module';
 import { Config } from 'config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(ApiGatewayModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { cors: true });
   const configService = app.get(ConfigService<Config>);
   const port = configService.get('port', { infer: true });
   const logger = new Logger();

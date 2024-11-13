@@ -1,7 +1,4 @@
 import { commonConfig } from '@backend/common';
-// import dotenv from 'dotenv';
-//
-// dotenv.config();
 
 export const config = () =>
   ({

@@ -1,9 +1,0 @@
-import { Backend{{ pascalCase name }}Environment } from '@packages/environment';
-
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv extends Backend{{ pascalCase name }}Environment {}
-  }
-}
-
-export {};

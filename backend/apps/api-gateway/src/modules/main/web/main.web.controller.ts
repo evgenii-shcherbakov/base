@@ -1,19 +1,17 @@
-import { Method } from '@backend/common';
-import { Controller, Get, Inject, Query } from '@nestjs/common';
+import { ContactDto, ContactQueryDto, Method } from '@backend/common';
+import { InjectGrpcService } from '@backend/transport';
+import { Controller, Get, Query } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { ApiTags } from '@nestjs/swagger';
-import { ContactServiceClient } from '@packages/grpc.nest';
+import { CONTACT_SERVICE_NAME, ContactServiceClient } from '@packages/grpc.nest';
 import { plainToInstance } from 'class-transformer';
-import { ContactDto } from 'common/dto/contact.dto';
-import { ContactQueryDto } from 'modules/main/dto/contact.query.dto';
-import { MAIN_CONTACT_SERVICE_CLIENT } from 'modules/main/main.constants';
 import { catchError, map, Observable, throwError } from 'rxjs';
 
 @ApiTags('main')
 @Controller('main')
 export class MainWebController {
   constructor(
-    @Inject(MAIN_CONTACT_SERVICE_CLIENT)
+    @InjectGrpcService(CONTACT_SERVICE_NAME)
     private readonly contactServiceClient: ContactServiceClient,
   ) {}
 

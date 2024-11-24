@@ -1,9 +1,5 @@
-import {
-  ApiDatabaseException,
-  ApiEntityNotFoundException,
-  BaseQuery,
-  DatabaseEntity,
-} from '@backend/common';
+import { BaseQuery, DatabaseEntity } from '@backend/common';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Either } from '@sweet-monads/either';
 
 export interface DatabaseRepository<
@@ -15,13 +11,13 @@ export interface DatabaseRepository<
   isExistsById(id: string): Promise<boolean>;
   isExists(query?: Query): Promise<boolean>;
   count(query?: Query): Promise<number>;
-  getById(id: string): Promise<Either<ApiEntityNotFoundException, Entity>>;
-  getOne(query?: Query): Promise<Either<ApiEntityNotFoundException, Entity>>;
+  getById(id: string): Promise<Either<NotFoundException, Entity>>;
+  getOne(query?: Query): Promise<Either<NotFoundException, Entity>>;
   getMany(query?: Query): Promise<Entity[]>;
-  saveOne(createData: Create): Promise<Either<ApiDatabaseException, Entity>>;
-  saveMany(createData: Create[]): Promise<Either<ApiDatabaseException, Entity[]>>;
-  updateById(id: string, updateData: Update): Promise<Either<ApiEntityNotFoundException, Entity>>;
-  updateOne(query: Query, updateData: Update): Promise<Either<ApiEntityNotFoundException, Entity>>;
+  saveOne(createData: Create): Promise<Either<InternalServerErrorException, Entity>>;
+  saveMany(createData: Create[]): Promise<Either<InternalServerErrorException, Entity[]>>;
+  updateById(id: string, updateData: Update): Promise<Either<NotFoundException, Entity>>;
+  updateOne(query: Query, updateData: Update): Promise<Either<NotFoundException, Entity>>;
   updateMany(query: Query, updateData: Update): Promise<boolean>;
   deleteById(id: string): Promise<boolean>;
   deleteOne(query?: Query): Promise<boolean>;

@@ -4,7 +4,7 @@ import { map, Observable } from 'rxjs';
 import { isObjectIdOrHexString } from 'mongoose';
 
 @Injectable()
-export class GrpcInterceptor implements NestInterceptor {
+export class GrpcControllerInterceptor implements NestInterceptor {
   private convertValue(value: any) {
     if (!value) {
       return value;
@@ -36,7 +36,7 @@ export class GrpcInterceptor implements NestInterceptor {
     return value;
   }
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(_: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(map(this.convertValue.bind(this)));
   }
 }

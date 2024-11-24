@@ -1,4 +1,5 @@
 import { BaseQuery, DatabaseEntity } from '@backend/common';
+import _ from 'lodash';
 import { MongoEntity } from 'modules/mongo/mongo.entity';
 import { FilterQuery } from 'mongoose';
 
@@ -8,7 +9,7 @@ export class MongoMapper<
   Query extends BaseQuery = BaseQuery & Partial<Entity>,
 > {
   transformQuery({ id, ids, ...rest }: Query): FilterQuery<Doc> {
-    const result: FilterQuery<any> = { ...rest };
+    const result: FilterQuery<any> = _.omitBy(rest, _.isNil);
 
     if (id) {
       result._id = id;

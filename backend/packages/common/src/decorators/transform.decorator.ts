@@ -32,3 +32,17 @@ export const TransformToBoolean = (): PropertyDecorator => {
     return value;
   });
 };
+
+export const TransformToArray = (): PropertyDecorator => {
+  return Transform(({ value }) => {
+    if (_.isArray(value)) {
+      return value;
+    }
+
+    if (!_.isEmpty(value)) {
+      return [value];
+    }
+
+    return value;
+  });
+};

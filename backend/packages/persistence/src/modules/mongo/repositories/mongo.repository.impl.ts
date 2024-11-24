@@ -1,9 +1,5 @@
-import {
-  ApiDatabaseException,
-  ApiEntityNotFoundException,
-  BaseQuery,
-  DatabaseEntity,
-} from '@backend/common';
+import { BaseQuery, DatabaseEntity } from '@backend/common';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Either, left, right } from '@sweet-monads/either';
 import { DatabaseRepository } from 'common';
 import { MongoMapper } from 'modules/mongo/mappers';
@@ -37,15 +33,15 @@ export abstract class MongoRepositoryImpl<
     return this.model.countDocuments(this.mapper.transformQuery(query));
   }
 
-  async getById(id: string): Promise<Either<ApiEntityNotFoundException, Entity>> {
+  async getById(id: string): Promise<Either<NotFoundException, Entity>> {
     return this.getOne({ id } as Query);
   }
 
-  async getOne(query: Query = {} as Query): Promise<Either<ApiEntityNotFoundException, Entity>> {
+  async getOne(query: Query = {} as Query): Promise<Either<NotFoundException, Entity>> {
     const entity = await this.model.findOne(this.mapper.transformQuery(query)).lean();
 
     if (!entity) {
-      return left(new ApiEntityNotFoundException(this.model.modelName));
+      return left(new NotFoundException(this.model.modelName));
     }
 
     return right(entity as Entity);
@@ -55,21 +51,21 @@ export abstract class MongoRepositoryImpl<
     return this.model.find(this.mapper.transformQuery(query)).lean() as unknown as Entity[];
   }
 
-  async saveOne(createData: Create): Promise<Either<ApiDatabaseException, Entity>> {
+  async saveOne(createData: Create): Promise<Either<InternalServerErrorException, Entity>> {
     try {
       const entity = await this.model.create(createData);
       return right(this.mapper.stringify(entity));
     } catch (e) {
-      return left(new ApiDatabaseException(e?.['message']));
+      return left(new InternalServerErrorException(e?.['message']));
     }
   }
 
-  async saveMany(createData: Create[]): Promise<Either<ApiDatabaseException, Entity[]>> {
+  async saveMany(createData: Create[]): Promise<Either<InternalServerErrorException, Entity[]>> {
     try {
       const entities = await this.model.insertMany(createData);
       return right(this.mapper.stringifyMany(entities as any));
     } catch (e) {
-      return left(new ApiDatabaseException(e?.['message']));
+      return left(new InternalServerErrorException(e?.['message']));
     }
   }
 
@@ -87,10 +83,7 @@ export abstract class MongoRepositoryImpl<
     return !!result.deletedCount;
   }
 
-  async updateById(
-    id: string,
-    updateData: Update,
-  ): Promise<Either<ApiEntityNotFoundException, Entity>> {
+  async updateById(id: string, updateData: Update): Promise<Either<NotFoundException, Entity>> {
     return this.updateOne({ id } as Query, updateData);
   }
 
@@ -101,16 +94,13 @@ export abstract class MongoRepositoryImpl<
     return !!result.modifiedCount;
   }
 
-  async updateOne(
-    query: Query,
-    updateData: Update,
-  ): Promise<Either<ApiEntityNotFoundException, Entity>> {
+  async updateOne(query: Query, updateData: Update): Promise<Either<NotFoundException, Entity>> {
     const entity = await this.model
       .findByIdAndUpdate(this.mapper.transformQuery(query), { $set: updateData }, { new: true })
       .lean();
 
     if (!entity) {
-      return left(new ApiEntityNotFoundException(this.model.modelName));
+      return left(new NotFoundException(this.model.modelName));
     }
 
     return right(entity as Entity);

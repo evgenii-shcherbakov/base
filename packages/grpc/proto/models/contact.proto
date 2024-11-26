@@ -1,0 +1,31 @@
+syntax = 'proto3';
+
+package models.contact;
+
+import "google/protobuf/timestamp.proto";
+
+message Contact {
+  string _id = 1;
+  google.protobuf.Timestamp createdAt = 2;
+  optional google.protobuf.Timestamp updatedAt = 3;
+
+  optional string link = 4;
+  string name = 5;
+  string value = 6;
+  bool isPublic = 7;
+}
+
+message ContactQuery {
+  optional string id = 1;
+  repeated string ids = 2;
+  optional string name = 3;
+  optional bool isPublic = 4;
+}
+
+message ContactRequest {
+  optional ContactQuery query = 1;
+}
+
+message ContactList {
+  repeated Contact items = 1;
+}

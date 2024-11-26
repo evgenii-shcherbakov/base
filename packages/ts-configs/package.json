@@ -2,5 +2,6 @@
   "name": "@packages/ts-configs",
   "private": true,
   "author": "Evgenii Shcherbakov <iipekolict@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "version": "0.0.0"
 }

@@ -1,13 +1,15 @@
-#name: 'Deploy'
-#
-#on:
-#  push:
-#    branches:
-#       - 'main'
-#    paths:
-#      - 'apps/**'
-#      - 'packages/**'
-#
+name: 'Deploy'
+
+on:
+  push:
+    branches:
+       - 'main'
+    paths:
+      - 'admin/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'packages/**'
+
 #env:
   #  Vercel
 #  VERCEL_TOKEN: '${{ secrets.VERCEL_TOKEN }}'
@@ -39,11 +41,14 @@
 #  GITHUB_COMMIT_MESSAGE: '${{ github.event.head_commit.message }}'
 #  GITHUB_COMMITTER: '${{ github.actor }}'
 
-#jobs:
-#  Deploy:
-#    runs-on: 'ubuntu-latest'
-#
-#    steps:
+jobs:
+  Deploy:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+      - name: Health check
+        run: echo success
+
 #      - name: 'Load repository code'
 #        uses: 'actions/checkout@v4'
 #        with:

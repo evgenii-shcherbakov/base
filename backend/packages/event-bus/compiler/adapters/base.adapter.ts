@@ -1,5 +1,5 @@
 import { ContextService, ServiceEventBus } from '@compiler/services';
-import { TemplateService, ImportService } from '@packages/compiler-utils';
+import { FormatService, TemplateService, ImportService } from '@packages/compiler-utils';
 import { Project, SourceFile } from 'ts-morph';
 
 export type AdapterParams = {
@@ -28,6 +28,7 @@ export abstract class BaseAdapter {
   protected readonly outputFile: SourceFile;
   protected readonly templateService: TemplateService;
   protected readonly importService: ImportService;
+  protected readonly formatService = new FormatService();
 
   protected constructor(
     protected readonly contextService: ContextService,
@@ -89,6 +90,6 @@ export abstract class BaseAdapter {
 
     this.outputFile.organizeImports();
     this.outputFile.fixMissingImports();
-    await this.outputFile.save();
+    await this.formatService.saveSourceFile(this.outputFile);
   }
 }

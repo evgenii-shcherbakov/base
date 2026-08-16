@@ -1,3 +1,4 @@
+import { FormatService } from '@packages/compiler-utils';
 import { constantCase } from 'change-case-all';
 import { writeFile } from 'fs/promises';
 import {
@@ -11,6 +12,8 @@ import { ContextService } from './context.service';
 import { ServiceEventBus } from './parse-strategy.service';
 
 export class EventBusService {
+  private readonly formatService = new FormatService();
+
   constructor(
     protected readonly project: Project,
     private readonly contextService: ContextService,
@@ -88,6 +91,6 @@ export class EventBusService {
 
     outputFile.organizeImports();
     outputFile.fixMissingImports();
-    await outputFile.save();
+    await this.formatService.saveSourceFile(outputFile);
   }
 }

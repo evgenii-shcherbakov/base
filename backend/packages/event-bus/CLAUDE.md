@@ -41,7 +41,7 @@ Re-exports `./generated` (the abstract buses + `EventBusHost`) and `./strategy/e
 ## Commands
 
 ```bash
-pnpm compile          # tsx compiler/main.ts → regenerates src/generated + @backend/nats/src/generated, then prettier
+pnpm compile          # tsx compiler/main.ts → regenerates src/generated + @backend/nats/src/generated, prettier-formatted as it writes
 pnpm build            # tsdown: src → dist (cjs + d.ts)
 pnpm dev              # tsdown --watch (build only — does NOT recompile)
 pnpm lint / format / format:generated / reset
@@ -53,4 +53,5 @@ Turbo splits stages: `compile` (inputs `src/strategy/**`,`compiler/**` → outpu
 
 - One compile regenerates **two** packages (this one + `@backend/nats`); rebuild both after editing the strategy. Never hand-edit either `generated/`.
 - Fix generated-output bugs in the strategy, the compiler services, or the Nats adapter templates — not the emitted `.ts`.
+- Both writes (`BaseAdapter.run`, `EventBusService.compile`) go through `FormatService` from `@packages/compiler-utils`, so the emitted files are prettier-formatted before they reach disk and the turbo cache. A plain `sourceFile.save()` would reintroduce raw output on cache hits.
 - cjs-only output; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

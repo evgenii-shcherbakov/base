@@ -483,6 +483,9 @@ importers:
       '@types/pug':
         specifier: 2.0.10
         version: 2.0.10
+      prettier:
+        specifier: 3.9.4
+        version: 3.9.4
       pug:
         specifier: 3.0.4
         version: 3.0.4
@@ -854,6 +857,9 @@ importers:
       '@types/pug':
         specifier: 2.0.10
         version: 2.0.10
+      prettier:
+        specifier: 3.9.4
+        version: 3.9.4
       pug:
         specifier: 3.0.4
         version: 3.0.4
@@ -911,6 +917,9 @@ importers:
       '@types/pug':
         specifier: 2.0.10
         version: 2.0.10
+      prettier:
+        specifier: 3.9.4
+        version: 3.9.4
       protobufjs:
         specifier: 7.6.3
         version: 7.6.3

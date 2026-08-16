@@ -11,7 +11,7 @@
     "format:generated": "prettier src/generated --write --config ../../../.prettierrc",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "dev": "pnpm build --watch",
-    "compile": "tsx compiler/main.ts && pnpm format:generated --log-level error",
+    "compile": "tsx compiler/main.ts",
     "build": "tsdown",
     "reset": "rm -rf .turbo dist node_modules",
     "reset:modules": "rm -rf node_modules"
@@ -24,6 +24,7 @@
     "@packages/compiler-utils": "workspace:*",
     "@packages/configs": "workspace:*",
     "@types/pug": "2.0.10",
+    "prettier": "3.9.4",
     "pug": "3.0.4",
     "ts-morph": "28.0.0",
     "tsx": "4.22.4"

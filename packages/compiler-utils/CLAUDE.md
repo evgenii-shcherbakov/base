@@ -10,12 +10,13 @@ The low-level toolkit that **both** custom codegen compilers are built on — `p
 
 - **`TemplateService(templatePath?)`** — a Pug wrapper. `parse()` recursively reads every `*.pug` under the directory and compiles them (key = filename without `.pug`); `render(name, data)` renders by name. This is how adapters generate code from templates (e.g. `render('nats.controller', { data })`).
 - **`ImportService(sourceFile)`** — a ts-morph `SourceFile` wrapper. `addOrUpdate(moduleName, namedImports)` adds/merges named imports with dedup (clears `isTypeOnly` on merge). Adapters use it to assemble the import block of generated files.
+- **`FormatService`** — prettier at write time. `formatText(content, filePath)` formats against the repo-root `.prettierrc` (resolved via `prettier.resolveConfig`), `writeFile(filePath, content)` formats then writes, `saveSourceFile(sourceFile)` is the ts-morph counterpart (writes the formatted text back into the project, then saves). **Every write in both compilers must go through it** — formatting used to live in each package's `build` script, which left generated code raw whenever turbo restored the `compile` outputs from cache or the sibling package's build was not in the task graph.
 - **Repo-root paths** — `REPOSITORY_ROOT`, `COMMON_PACKAGES_DIR_ROOT`, `BACKEND_PACKAGES_DIR_ROOT`, `FRONTEND_PACKAGES_DIR_ROOT`. Compilers use them as `targetRoot` (e.g. `join(BACKEND_PACKAGES_DIR_ROOT, 'proto', 'src')`).
 - **Extension regexes** — `PROTO_EXT_REG_EXP`, `TS_EXT_REG_EXP`, `PUG_EXT_REG_EXP`.
 
 ## Dependencies (contract)
 
-`pug`, `ts-morph`, `@types/pug` are declared in both `devDependencies` and **`peerDependencies`**. The package does NOT bundle them — every consuming compiler must carry these deps itself (as `packages/proto` and `@backend/event-bus` do). If you add a new primitive backed by a third-party lib, add it to peerDeps and to the consumers.
+`pug`, `ts-morph`, `@types/pug`, `prettier` are declared in both `devDependencies` and **`peerDependencies`**. The package does NOT bundle them — every consuming compiler must carry these deps itself (as `packages/proto` and `@backend/event-bus` do). If you add a new primitive backed by a third-party lib, add it to peerDeps and to the consumers.
 
 ## Commands
 

@@ -36,7 +36,7 @@ Each extends `TransformTask` — post-processes one generated file via ts-morph 
 ## Commands
 
 ```bash
-pnpm compile          # tsx compiler/main.ts → regenerates src/ (+ backend/frontend proto), then prettier
+pnpm compile          # tsx compiler/main.ts → regenerates src/ (+ backend/frontend proto), prettier-formatted as it writes
 pnpm build            # tsdown: src/ → dist (esm + cjs + d.ts)
 pnpm dev              # tsdown --watch (build only — does NOT recompile proto)
 pnpm format           # prettier src
@@ -50,3 +50,4 @@ Turbo splits the stages: `compile` (inputs `pkg/**`,`compiler/**` → outputs `s
 - A `*.service.proto` is recognized as a service by having `methods` → drives Nest Transports / Client repositories. Place new protos under `pkg/<domain>/` and recompile.
 - `ts-proto`/`protobufjs`/`pug`/`ts-morph` are devDeps here (the compiler runs in-package, unlike `@packages/compiler-utils` which peer-depends on them).
 - All three `src/` outputs are generated — fix bugs in tasks/templates, never in the emitted `.ts`.
+- Every write in `base.adapter.ts` (`onFolder`, `onSourceFile`, `onFinish`) goes through `FormatService` from `@packages/compiler-utils`. Keep it that way: a raw `writeFile`/`sourceFile.save()` would land unformatted code both on disk and in the turbo `compile` cache (`outputs: src/**`), which then restores it on every cache hit.

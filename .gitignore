@@ -43,3 +43,7 @@ yarn-error.log*
 # Claude
 .claude/settings.local.json
 .claude/plans
+
+# Credentials
+*.key
+*.pub

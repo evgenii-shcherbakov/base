@@ -81,7 +81,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://admin:password123@postgres:5432
       AUTH_GRPC_URL: 0.0.0.0:8001
-      ACCESS_JWT_SECRET: string123
+      JWT_ACCESS_PRIVATE_KEY_BASE64: ${JWT_ACCESS_PRIVATE_KEY_BASE64}
+      JWT_ACCESS_PUBLIC_KEY_BASE64: ${JWT_ACCESS_PUBLIC_KEY_BASE64}
       REFRESH_JWT_SECRET: string123
       ADMIN_EMAIL: admin@gmail.com
       ADMIN_PASSWORD: string123
@@ -143,6 +144,7 @@ services:
       AUTH_GRPC_URL: backend.auth:8001
       STORAGE_GRPC_URL: backend.storage:8002
       NATS_URL: nats://nats:4222
+      JWT_ACCESS_PUBLIC_KEY_BASE64: ${JWT_ACCESS_PUBLIC_KEY_BASE64}
     networks:
       - private_network
       - public_network

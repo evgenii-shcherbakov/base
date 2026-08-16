@@ -131,6 +131,24 @@ apps/{{frontend service name}}/ .env
 
 You can check examples of env variables in service-specific `.env.example` files
 
+#### JWT keys
+
+Access tokens are signed with **RS256**: `backend.auth` holds the private key and issues them, `backend.api-gateway` holds only the public key and verifies them locally (this is what lets the gRPC stream guard stay synchronous). Refresh tokens stay HS256 and never leave `backend.auth`.
+
+Generate the pair and copy the two lines into your `.env` files:
+
+```shell
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-access.key && openssl rsa -in jwt-access.key -pubout -out jwt-access.key.pub && echo "JWT_ACCESS_PRIVATE_KEY_BASE64=$(base64 -i jwt-access.key | tr -d '\n')" && echo "JWT_ACCESS_PUBLIC_KEY_BASE64=$(base64 -i jwt-access.key.pub | tr -d '\n')"
+```
+
+The keys are base64-encoded on purpose: a multi-line PEM does not survive `.env` files, docker-compose inline variables, or Railway.
+
+- `backend/apps/auth/.env` — both variables
+- `backend/apps/api-gateway/.env` — `JWT_ACCESS_PUBLIC_KEY_BASE64` only
+- root `.env` — both (docker-compose forwards them)
+
+On **Railway**, set them per service before redeploying (`validateEnv` fails fast on startup otherwise): the private key on `backend.auth`, the public key on both `backend.auth` and `backend.api-gateway`. Declaring the public key as a project-level shared variable and referencing it via `${{shared.JWT_ACCESS_PUBLIC_KEY_BASE64}}` keeps the two services from drifting apart. Rotating the pair invalidates every issued access token — clients recover through the refresh flow.
+
 ### Usage
 
 ```shell

@@ -10,8 +10,8 @@
   "scripts": {
     "format": "prettier src --write --config ../../.prettierrc",
     "dev": "pnpm build --watch",
-    "build": "tsdown",
-    "compile": "tsx compiler/main.ts && pnpm format --log-level error",
+    "build": "pnpm format --log-level error && tsdown",
+    "compile": "tsx compiler/main.ts",
     "reset": "rm -rf .turbo dist node_modules",
     "reset:modules": "rm -rf node_modules"
   },

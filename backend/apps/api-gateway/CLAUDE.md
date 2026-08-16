@@ -28,13 +28,16 @@ Each proxy service injects the downstream client via `@InjectGrpcService(Grpc<X>
 
 There is **no `grpc-access` module** — authorization is the global `CommonModule` (`@Global()`) exposing `AccessService`, plus per-controller decorators:
 
-- `AccessService` holds two `MemoryCache`s (`@backend/common`): **unary** (keyed by `access-token`, populated by calling `auth.me`) and **stream** (keyed by a single-use `stream-code` / temp-code).
-- Controller decorators (`common/interface/grpc/decorators/grpc.controller.decorator.ts`): `@PublicGrpcController()` (skips auth), `@DefaultGrpcController()` (authenticated — `GrpcAccessUnaryGuard` reads the `access-token` gRPC metadata and caches the user), `@AdminGrpcController()` (additionally requires `UserRole.ADMIN`).
-- **Stream methods** use `@GrpcStreamMethod()` → `GrpcAccessStreamGuard`, which validates a one-time `stream-code`. That code is cached by `AccessService.saveStreamCode` when an admin creates a temp-code (`TempCodeProxyService.createOne`), and is deactivated on first use.
+- `AccessService` exposes two checks over the same `access-token` metadata, deliberately implemented differently:
+  - `checkUnaryAccess` — **async**, calls `auth.me` over gRPC, so a deleted user or a role change takes effect immediately. No caching.
+  - `checkStreamAccess` — **sync**, verifies the RS256 access token locally via `TokenService` → `JwtTokenServiceImpl` (`common/infrastructure/services`), reading `role` straight from the payload and rejecting anything whose `aud` is not `AuthTokenAudience.ACCESS` (enforced by the jwt `audience` option, so a refresh token cannot be replayed here). It must stay synchronous: an async guard on a client-stream gRPC method defers the handler and the incoming message stream stalls (`bufferUntilDrained` in `@nestjs/microservices` is best-effort). This is why the gateway holds the JWT **public** key (`JWT_ACCESS_PUBLIC_KEY_BASE64`) — it verifies but cannot issue tokens.
+- Controller decorators (`common/interface/grpc/decorators/grpc.controller.decorator.ts`): `@PublicGrpcController()` (skips auth), `@DefaultGrpcController()` (authenticated — `GrpcAccessUnaryGuard` reads the `access-token` gRPC metadata), `@AdminGrpcController()` (additionally requires `UserRole.ADMIN`).
+- **Stream methods** use `@GrpcStreamMethod()` → `GrpcAccessStreamGuard`, which reads the same `access-token` metadata and calls `checkStreamAccess`. Both guards put the resolved id into the `user-id` metadata for `@GrpcUserId()`.
+- The `temp-code` module is now a plain CRUD proxy — it no longer participates in stream authorization.
 
 ## Config / commands
 
-`config.ts` is just `commonConfig()`. Env: `PORT`, `API_GATEWAY_GRPC_URL`, `AUTH_GRPC_URL`, `STORAGE_GRPC_URL` (the three `*_GRPC_URL` drive the `@backend/grpc` topology). No DB, no migrator; the `NATS_URL` still present in `.env.example` is vestigial (this service uses no event bus).
+`config.ts` is just `commonConfig()`; JWT verification has its own `common/infrastructure/configs/jwt.config.ts`. Env: `PORT`, `API_GATEWAY_GRPC_URL`, `AUTH_GRPC_URL`, `STORAGE_GRPC_URL` (the three `*_GRPC_URL` drive the `@backend/grpc` topology), `JWT_ACCESS_PUBLIC_KEY_BASE64` (base64-encoded RSA public PEM, must match the private key in `backend.auth`). No DB, no migrator; the `NATS_URL` still present in `.env.example` is vestigial (this service uses no event bus).
 
 ```bash
 pnpm start:dev        # dotenv → nest start --watch service

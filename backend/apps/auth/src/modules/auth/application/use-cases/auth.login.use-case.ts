@@ -29,6 +29,7 @@ export class AuthLoginUseCase {
     const tokens = await this.tokenService.generateTokens({
       id: user.value.id,
       login: user.value.email,
+      role: user.value.role,
     });
 
     if (tokens.isLeft()) {

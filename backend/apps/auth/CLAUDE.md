@@ -9,9 +9,9 @@ The identity / authentication microservice. gRPC host `auth`, event-bus host `Ev
 ## Modules (`src/modules/`)
 
 - **user** — user CRUD. `GrpcUserController` serves `User` / `UserAdmin` / `UserWeb` gRPC services. Emits `UserEventBus` on create (storage subscribes to provision a root folder). `UserRepository.getOneInternal` exposes the password `hash` for login (the public `User` proto never includes it).
-- **auth** — `AuthLoginUseCase` (verify password → issue tokens), `AuthRefreshTokenUseCase`, `AuthGetUserByTokenUseCase`. Tokens via `AuthTokenService` → `JwtAuthTokenServiceImpl` (`@nestjs/jwt`, `jwtConfig`). Depends on `UserModule` + `CryptoModule`.
+- **auth** — `AuthLoginUseCase` (verify password → issue tokens), `AuthRefreshTokenUseCase`, `AuthGetUserByTokenUseCase`. Tokens via `AuthTokenService` → `JwtAuthTokenServiceImpl` (`@nestjs/jwt`, `jwtConfig`). Depends on `UserModule` + `CryptoModule`. **Access tokens are RS256**: signed here with the private key, verified by `api-gateway` with the public key alone, so the payload carries `role` (see `AuthTokenPayload` in `@backend/common`). Refresh tokens stay HS256 — only this service verifies them. Every token also carries its kind as the standard `aud` claim (`AuthTokenAudience`), set and enforced via the jwt `audience` option in `jwtConfig` — so `parse*TokenPayload` reject a token of the wrong kind without a hand-written check. With two different algorithms in play, the key alone no longer separates access from refresh.
 - **crypto** — `CryptoService` → `BcryptCryptoServiceImpl` (`hash` / `compare`), returns `Either`.
-- **temp-code** — single-use authorization codes (`randomUUID`, `expiredAt` from `tempCode.expiresInMinutes`, `isActive`). Currently used only to authorize gRPC **stream** requests. CRUD + deactivate use-cases; `CronTempCodeScheduler` deactivates expired codes every minute inside `databaseRunnerService.isolatedRun`. Serves `TempCode` / `Admin` / `Web` gRPC services.
+- **temp-code** — single-use authorization codes (`randomUUID`, `expiredAt` from `tempCode.expiresInMinutes`, `isActive`). CRUD + deactivate use-cases; `CronTempCodeScheduler` deactivates expired codes every minute inside `databaseRunnerService.isolatedRun`. Serves `TempCode` / `Admin` / `Web` gRPC services. **No production consumer**: it used to authorize gRPC stream uploads, which now verify the access token directly — the entity is kept for future use and its admin CRUD.
 
 ## Migrator (`src/migrator/`)
 
@@ -19,7 +19,7 @@ Separate Nest app via `PgMigrationModule.register` (entities `PgUserEntity`, `Pg
 
 ## Config & env (`src/config.ts`)
 
-Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. Env: `DATABASE_URL`, `AUTH_GRPC_URL`, `NATS_URL`, `ACCESS_JWT_SECRET`, `REFRESH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`.
+Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. Env: `DATABASE_URL`, `AUTH_GRPC_URL`, `NATS_URL`, `JWT_ACCESS_PRIVATE_KEY_BASE64`, `JWT_ACCESS_PUBLIC_KEY_BASE64`, `REFRESH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`. The two key vars hold a base64-encoded RSA PEM pair (decoded via `decodeBase64Pem`) — multi-line PEM does not survive `.env` / docker-compose / Railway.
 
 ## Commands
 

@@ -1,5 +1,7 @@
 import { ContextService, ServiceEventBus } from '@compiler/services';
 import { FormatService, TemplateService, ImportService } from '@packages/compiler-utils';
+import { mkdir, writeFile } from 'fs/promises';
+import { dirname } from 'path';
 import { Project, SourceFile } from 'ts-morph';
 
 export type AdapterParams = {
@@ -25,10 +27,10 @@ export type AdapterFactory = (
 
 export abstract class BaseAdapter {
   protected readonly project: Project;
-  protected readonly outputFile: SourceFile;
   protected readonly templateService: TemplateService;
-  protected readonly importService: ImportService;
   protected readonly formatService = new FormatService();
+  protected outputFile: SourceFile;
+  protected importService: ImportService;
 
   protected constructor(
     protected readonly contextService: ContextService,
@@ -38,9 +40,7 @@ export abstract class BaseAdapter {
     protected readonly templatePath?: string,
   ) {
     this.project = this.getProject();
-    this.outputFile = this.project.addSourceFileAtPath(outputPath);
     this.templateService = new TemplateService(this.templatePath);
-    this.importService = new ImportService(this.outputFile);
   }
 
   protected getProject() {
@@ -69,7 +69,14 @@ export abstract class BaseAdapter {
   }
 
   async onInit() {
-    this.outputFile.replaceWithText('/* eslint-disable */\n');
+    // The adapter owns its output file the way `EventBusService` owns the event-bus one:
+    // adding a new adapter must not require its `generated/` file to exist beforehand.
+    await mkdir(dirname(this.outputPath), { recursive: true });
+    await writeFile(this.outputPath, '/* eslint-disable */\n', { encoding: 'utf-8' });
+
+    this.outputFile = this.project.addSourceFileAtPath(this.outputPath);
+    this.importService = new ImportService(this.outputFile);
+
     this.outputFile.addImportDeclarations(this.contextService.getExternalImportStructures());
 
     this.importService.addOrUpdate(

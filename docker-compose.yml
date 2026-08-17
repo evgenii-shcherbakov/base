@@ -51,16 +51,32 @@ services:
       - local
       - all
 
-  nats:
-    image: nats:latest
+  # nats:
+  #   image: nats:latest
+  #   restart: unless-stopped
+  #   container_name: base-nats
+  #   ports:
+  #     - '4222:4222'
+  #     - '8222:8222'
+  #   command: ['-js', '-m', '8222', '-sd', '/data', '--name', 'nats-node']
+  #   volumes:
+  #     - nats_data:/data
+  #   networks:
+  #     - private_network
+  #     - public_network
+  #   profiles:
+  #     - local
+  #     - all
+
+  redis:
+    image: redis:8-alpine
     restart: unless-stopped
-    container_name: base-nats
+    container_name: base-redis
     ports:
-      - '4222:4222'
-      - '8222:8222'
-    command: ['-js', '-m', '8222', '-sd', '/data', '--name', 'nats-node']
+      - '6379:6379'
+    command: ['redis-server', '--appendonly', 'yes']
     volumes:
-      - nats_data:/data
+      - redis_data:/data
     networks:
       - private_network
       - public_network
@@ -86,13 +102,15 @@ services:
       REFRESH_JWT_SECRET: string123
       ADMIN_EMAIL: admin@gmail.com
       ADMIN_PASSWORD: string123
-      NATS_URL: nats://nats:4222
+      # NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
       TEMP_TOKEN_EXPIRES_IN_MINUTES: 1
     networks:
       - private_network
     depends_on:
       - postgres
-      - nats
+      # - nats
+      - redis
     profiles:
       - all
 
@@ -110,7 +128,8 @@ services:
       DATABASE_URL: postgresql://admin:password123@postgres:5432
       AUTH_GRPC_URL: backend.auth:8001
       STORAGE_GRPC_URL: 0.0.0.0:8002
-      NATS_URL: nats://nats:4222
+      # NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
       BUNNY_STORAGE_API_KEY: ${BUNNY_STORAGE_API_KEY}
       BUNNY_STORAGE_CDN_ZONE: ${BUNNY_STORAGE_CDN_ZONE}
       BUNNY_STORAGE_CDN_PRIVATE_KEY: ${BUNNY_STORAGE_CDN_PRIVATE_KEY}
@@ -124,7 +143,8 @@ services:
       - private_network
     depends_on:
       - postgres
-      - nats
+      # - nats
+      - redis
       - backend.auth
     profiles:
       - all
@@ -186,4 +206,5 @@ networks:
 
 volumes:
   postgres_data:
-  nats_data:
+  # nats_data:
+  redis_data:

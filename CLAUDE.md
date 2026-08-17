@@ -31,7 +31,7 @@ Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microserv
 `pnpm-workspace.yaml` globs four package roots; package names follow a strict convention used everywhere in turbo `--filter` and imports:
 
 - `backend/apps/*` → `backend.<name>` (deployable services: `api-gateway`, `auth`, `storage`)
-- `backend/packages/*` → `@backend/<name>` (shared backend libs: `common`, `grpc`, `nats`, `pg`, `mongo`, `proto`, `event-bus`)
+- `backend/packages/*` → `@backend/<name>` (shared backend libs: `common`, `grpc`, `nats`, `redis`, `pg`, `mongo`, `proto`, `event-bus`)
 - `frontend/apps/*` → `frontend.<name>` (`admin`)
 - `frontend/packages/*` → `@frontend/<name>` (`proto`)
 - `packages/*` → `@packages/<name>` (cross-stack: `common`, `proto`, `compiler-utils`, `configs`)
@@ -99,24 +99,26 @@ Generated `src/` is committed. Edit the `.proto`, recompile, then `build`. A Tra
 
 At runtime the gRPC loader reads the original `.proto` from `node_modules/@packages/proto/pkg`, so `pkg/` is a runtime dependency of the services, not just a codegen input. Both codegen compilers (proto and event-bus) share primitives from `@packages/compiler-utils` (Pug templating + ts-morph import handling).
 
-## Event-bus codegen pipeline (NATS events)
+## Event-bus codegen pipeline (NATS / Redis events)
 
 A second custom compiler, parallel to the proto one, generates the typed event bus. The single source of truth is the **`EventBusStrategy` interface** in `backend/packages/event-bus/src/strategy/index.ts`, shaped `[host][service][event]: PayloadType` (e.g. `auth.user.create: NestAuth.User`). Payloads are usually proto types; custom non-proto payloads live in `src/strategy/events/` (e.g. `StorageObjectParentUpdateEvent`).
 
 The compiler in `backend/packages/event-bus/compiler/` (run by `pnpm compile:event-bus`) parses that interface with **ts-morph** (not protobufjs) and emits in two stages:
 
 - **Abstract buses** → `@backend/event-bus/src/generated/index.ts`: a base `EventBus`, one abstract `<Service>EventBus` per service with `emit<Event>(event)` + `emitMany<Event>(events)`, and the `EventBusHost` enum.
-- **Nats adapter** (the only adapter, pug-templated) → `@backend/nats/src/generated/index.ts`: per-service `Nats<Service>Transport` (event-pattern constants, a `.ControllerMethods()` class decorator, and `.EventBus` = the abstract class), subscriber interfaces `Nats<Service>EventController`, cross-host handler interfaces `Nats<Service><Event>EventHandler` (method `on<Service><Event>`), and `NatsClientFactory` (maps each abstract bus → its concrete `NatsJetStreamClientProxy`-backed impl).
+- **Transport adapters** (pug-templated, one per target package) → `@backend/nats/src/generated/index.ts` and `@backend/redis/src/generated/index.ts`: per-service `<Adapter><Service>Transport` (event-pattern constants, a `.ControllerMethods()` class decorator, and `.EventBus` = the abstract class), subscriber interfaces `<Adapter><Service>EventController`, cross-host handler interfaces `<Adapter><Service><Event>EventHandler` (method `on<Service><Event>`), and a `<Adapter>ClientFactory` (maps each abstract bus → its concrete impl: `NatsJetStreamClientProxy`-backed for NATS, `RedisQueueClient`-backed for Redis). The Redis adapter additionally emits `REDIS_HOST_EVENTS` (host → event ids) for its mediator.
 
 **Naming is service-scoped, not host-scoped**: generated class/interface names (`<Service>EventBus`, `Nats<Service>Transport`, `Nats<Service>EventController`, …) are derived from the service name alone — the host is dropped. This means service names must stay unique **across all hosts** in `EventBusStrategy`, or the compiler emits colliding class names.
 
-Subjects are kebab-cased `host-service-event` (`auth-user-create`); JetStream streams stay host-scoped too — `host-service-stream` (`auth-user-stream`) — even though the generated class/interface names (bus, transport, controller) dropped the host prefix (see naming note above). Both packages' `src/generated/` are committed — edit the strategy, `pnpm compile:event-bus`, then `build`.
+Subjects are kebab-cased `host-service-event` (`auth-user-create`); JetStream streams stay host-scoped too — `host-service-stream` (`auth-user-stream`) — even though the generated class/interface names (bus, transport, controller) dropped the host prefix (see naming note above). Every target package's `src/generated/` is committed — edit the strategy, `pnpm compile:event-bus`, then `build`.
 
 **Runtime wiring (NATS JetStream):**
 - **Emit**: a feature module imports `NatsModule.forFeature({ EventBus: Nats<X>Transport.EventBus })`, binding the abstract bus to its concrete client; use-cases inject the abstract `<X>EventBus` and call `emit<Event>` after a successful write.
 - **Subscribe**: a controller under `interface/nats/*.controller.ts`, decorated `@NatsController()` + `Nats<X>Transport.ControllerMethods()`, implements `Nats<X>EventController`. To consume an event owned by **another** host, implement that `Nats…EventHandler` interface and decorate the method with `@NatsEvent(Nats<Other>Transport.<CONSTANT>)` (see `NatsStorageObjectController` consuming `auth-user-create`).
 - **Streams**: `ControllerMethods()` / `@NatsEvent` register subjects in `globalStreamRegistry`; `NatsModule.forRoot({ host: EventBusHost.X })` reads it to declare JetStream streams at bootstrap.
 - **Delivery**: at-least-once (`manualAck`, `maxDeliver` 10, `maxAckPending` 1) — subscriber handlers must be idempotent.
+
+**The Redis/BullMQ adapter (`@backend/redis`) is implemented but wired into no service** — NATS stays the live transport. It exists so the event bus is not locked to one broker; see `backend/packages/redis/CLAUDE.md` before using it. Key differences: BullMQ is a work queue, so fan-out is explicit — an event queue (`auth.user.create`, the dot-cased event id used verbatim) is drained by a mediator that copies each job into one queue per subscriber (`auth.user.create@storage.file`, `@` because BullMQ forbids `:` in queue names). Subscribers are discovered through a Redis-backed registry (`SADD event-bus:subs:<eventId>`), published by every service at bootstrap; the consumer id comes from `@RedisController({ consumer: '<host>.<module>' })`, which must sit **above** `Redis<X>Transport.ControllerMethods()`. Retries are BullMQ's (`attempts: 10`, exponential backoff, `failed` set as DLQ) instead of ack/nak.
 
 ## Backend service architecture (hexagonal / use-case)
 

@@ -1,5 +1,6 @@
 import { AdapterFactory } from '@compiler/adapters/base.adapter';
 import { Nats } from '@compiler/adapters/nats';
+import { Redis } from '@compiler/adapters/redis';
 import { ContextService, EventBusService, ParseStrategyService } from '@compiler/services';
 import { Project } from 'ts-morph';
 import {
@@ -46,6 +47,6 @@ const compile = async (adapterFactories: AdapterFactory[]) => {
   }
 };
 
-compile([Nats])
+compile([Nats, Redis])
   .then()
   .catch(() => process.exit(1));

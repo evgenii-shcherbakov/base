@@ -9,6 +9,8 @@ allowBuilds:
   '@scarf/scarf': false
   bcrypt: true
   esbuild: true
+  # Optional native msgpackr accelerator pulled in by bullmq; the JS fallback is enough.
+  msgpackr-extract: false
   protobufjs: true
   sharp: true
   unrs-resolver: true

@@ -8,7 +8,7 @@ When compacting the conversation, you MUST preserve:
 
 - **Current working scope**: which service/package is being edited right now, and in which worktree/branch.
 - **All proto-contract changes** (`packages/proto`) and the reason for each. Contracts are cross-service — losing them breaks consumers.
-- **Added/changed NATS subjects** and the shape of their payloads.
+- **Added/changed event-bus events** (queues/subjects) and the shape of their payloads.
 - **Database schema changes and migrations** (FinTech — critical, never collapse these).
 - **The list of changed files with status**: done / in-progress / still needs work.
 - **Open failing tests** and any fixes that were found.
@@ -24,7 +24,7 @@ You may compact aggressively:
 
 ## Overview
 
-Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microservices (backend) and a Next.js/Refine admin panel (frontend), wired together by Protobuf codegen and a NATS JetStream event bus. Requires Node ≥22.22, pnpm 11.0.9, and `protoc` (only for proto compilation).
+Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microservices (backend) and a Next.js/Refine admin panel (frontend), wired together by Protobuf codegen and a Redis/BullMQ event bus. Requires Node ≥22.22, pnpm 11.0.9, and `protoc` (only for proto compilation).
 
 ## Workspaces & naming
 
@@ -51,7 +51,7 @@ pnpm build                    # build everything (runs ^compile then ^build)
 pnpm build:backend.auth       # one service
 pnpm lint                     # eslint --fix across workspaces
 pnpm format                   # prettier
-pnpm docker:local             # postgres + nats only (for local dev against real infra)
+pnpm docker:local             # postgres + redis only (for local dev against real infra)
 pnpm docker                   # full stack in prod mode
 pnpm gen:package              # scaffold a new package via turbo generator (packages only; apps are hand-made)
 ```
@@ -60,7 +60,7 @@ pnpm gen:package              # scaffold a new package via turbo generator (pack
 
 ```bash
 pnpm compile:proto            # .proto → @backend/proto, @frontend/proto, @packages/proto
-pnpm compile:event-bus        # EventBusStrategy → @backend/event-bus + @backend/nats (generated/)
+pnpm compile:event-bus        # EventBusStrategy → @backend/event-bus + @backend/nats + @backend/redis (generated/)
 pnpm compile                  # run every package's compile task
 ```
 
@@ -112,13 +112,14 @@ The compiler in `backend/packages/event-bus/compiler/` (run by `pnpm compile:eve
 
 Subjects are kebab-cased `host-service-event` (`auth-user-create`); JetStream streams stay host-scoped too — `host-service-stream` (`auth-user-stream`) — even though the generated class/interface names (bus, transport, controller) dropped the host prefix (see naming note above). Every target package's `src/generated/` is committed — edit the strategy, `pnpm compile:event-bus`, then `build`.
 
-**Runtime wiring (NATS JetStream):**
-- **Emit**: a feature module imports `NatsModule.forFeature({ EventBus: Nats<X>Transport.EventBus })`, binding the abstract bus to its concrete client; use-cases inject the abstract `<X>EventBus` and call `emit<Event>` after a successful write.
-- **Subscribe**: a controller under `interface/nats/*.controller.ts`, decorated `@NatsController()` + `Nats<X>Transport.ControllerMethods()`, implements `Nats<X>EventController`. To consume an event owned by **another** host, implement that `Nats…EventHandler` interface and decorate the method with `@NatsEvent(Nats<Other>Transport.<CONSTANT>)` (see `NatsStorageObjectController` consuming `auth-user-create`).
-- **Streams**: `ControllerMethods()` / `@NatsEvent` register subjects in `globalStreamRegistry`; `NatsModule.forRoot({ host: EventBusHost.X })` reads it to declare JetStream streams at bootstrap.
-- **Delivery**: at-least-once (`manualAck`, `maxDeliver` 10, `maxAckPending` 1) — subscriber handlers must be idempotent.
+**Runtime wiring (Redis/BullMQ — the live transport):**
+- **Emit**: a feature module imports `RedisModule.forFeature({ EventBus: Redis<X>Transport.EventBus })`, binding the abstract bus to its concrete client; use-cases inject the abstract `<X>EventBus` and call `emit<Event>` after a successful write.
+- **Subscribe**: a controller under `interface/redis/*.controller.ts`, decorated `@RedisController({ consumer: '<host>.<module>' })` + `Redis<X>Transport.ControllerMethods()`, implements `Redis<X>EventController`. To consume an event owned by **another** host, implement that `Redis…EventHandler` interface and decorate the method with `@RedisEvent(Redis<Other>Transport.<CONSTANT>)` (see `RedisStorageObjectController` consuming `auth.user.create`). `@RedisController` must sit **above** `ControllerMethods()` — it rewrites the class's patterns into `<eventId>@<consumerId>` queue names.
+- **Queues**: BullMQ is a work queue, so fan-out is explicit. An event queue (`auth.user.create` — the dot-cased event id used verbatim) is drained by a mediator that copies each job into one queue per subscriber (`auth.user.create@storage.file`; `@` because BullMQ forbids `:` in queue names). Subscribers are discovered through a Redis-backed registry (`SADD event-bus:subs:<eventId>`) that every service publishes at bootstrap.
+- **Delivery**: at-least-once via BullMQ retries (`attempts: 10`, exponential backoff, the `failed` set as DLQ, `concurrency` 1) instead of ack/nak — subscriber handlers must be idempotent.
+- **Bootstrap**: `RedisModule.forRoot({ host: EventBusHost.X })` in `app.module.ts` + `app.connectMicroservice(app.get(REDIS_MICROSERVICE_OPTIONS))` in `main.ts`.
 
-**The Redis/BullMQ adapter (`@backend/redis`) is implemented but wired into no service** — NATS stays the live transport. It exists so the event bus is not locked to one broker; see `backend/packages/redis/CLAUDE.md` before using it. Key differences: BullMQ is a work queue, so fan-out is explicit — an event queue (`auth.user.create`, the dot-cased event id used verbatim) is drained by a mediator that copies each job into one queue per subscriber (`auth.user.create@storage.file`, `@` because BullMQ forbids `:` in queue names). Subscribers are discovered through a Redis-backed registry (`SADD event-bus:subs:<eventId>`), published by every service at bootstrap; the consumer id comes from `@RedisController({ consumer: '<host>.<module>' })`, which must sit **above** `Redis<X>Transport.ControllerMethods()`. Retries are BullMQ's (`attempts: 10`, exponential backoff, `failed` set as DLQ) instead of ack/nak.
+**`@backend/nats` is the dormant alternative.** It is fully generated and functional (JetStream: `@NatsController()`, `globalStreamRegistry`, kebab-cased subjects `auth-user-create`, `manualAck`/`maxDeliver` 10), but no service imports it since `auth`/`storage` moved to Redis. The event bus is deliberately broker-agnostic — swapping back is a matter of module/controller imports. See each package's CLAUDE.md.
 
 ## Backend service architecture (hexagonal / use-case)
 
@@ -139,12 +140,12 @@ Key conventions, all visible in the auth module:
 - **Proto types are domain-safe unless `Grpc`-prefixed.** Every `@backend/proto` export *without* a `Grpc` prefix — the `Nest*` message namespaces (`NestAuth`, `NestCommon`, `NestStorage`, `NestGoogle`) — is a pure data contract and may be imported from **any** layer, `domain/` included. The `Nest` prefix names the generated adapter, not a framework dependency: these are plain TS types with no Nest/RxJS/DI at runtime (domain repositories already extend `NestCommon.Entity`). Only the `Grpc*` exports (`Grpc<X>Transport`, `Grpc<X>ServiceController`, `Grpc<X>ServiceClient`) carry Nest decorators, RxJS `Observable`s and DI tokens — those are framework-bound and stay in `interface/` / `infrastructure/`. Rule of thumb: `Nest*` = domain-safe, `Grpc*` = framework-only.
 - **Errors flow as `Either` monads** (`@sweet-monads/either`), not thrown. Use-cases return `Promise<Either<Error, T>>`; controllers unwrap with `GrpcRxPipe` (`.unwrapEither`, `.toArrayItems`) from `@backend/grpc`.
 - **gRPC controllers** are thin: implement the generated `Grpc<X>ServiceController`, decorate with `@GrpcController()` + `Grpc<X>Transport.ControllerMethods()`, and delegate each method to a use-case via `from(useCase.execute(...)).pipe(GrpcRxPipe.…)`.
-- **Domain events** are emitted via injected abstract `@backend/event-bus` buses (e.g. `UserEventBus.emitCreate`) after a successful write, and consumed by `interface/nats/*.controller.ts` subscribers — see *Event-bus codegen pipeline* above.
-- **Bootstrap** (`main.ts`) is uniform: create the Nest app, then `connectMicroservice` for both `GRPC_MICROSERVICE_OPTIONS` (`@backend/grpc`) and `NATS_MICROSERVICE_OPTIONS` (`@backend/nats`). `app.module.ts` wires `GrpcModule.forRoot({ host })`, `NatsModule.forRoot({ host })`, `PgModule.forRoot({ database })`, and `ConfigModule` loading `config.ts`.
+- **Domain events** are emitted via injected abstract `@backend/event-bus` buses (e.g. `UserEventBus.emitCreate`) after a successful write, and consumed by `interface/redis/*.controller.ts` subscribers — see *Event-bus codegen pipeline* above.
+- **Bootstrap** (`main.ts`) is uniform: create the Nest app, then `connectMicroservice` for both `GRPC_MICROSERVICE_OPTIONS` (`@backend/grpc`) and `REDIS_MICROSERVICE_OPTIONS` (`@backend/redis`). `app.module.ts` wires `GrpcModule.forRoot({ host })`, `RedisModule.forRoot({ host })`, `PgModule.forRoot({ database })`, and `ConfigModule` loading `config.ts`.
 - **Config** (`config.ts`) spreads `commonConfig()` from `@backend/common` and validates service-specific env with `validateEnv(zod schema)` from `@packages/common`.
 - **Data layer**: entity IDs are application-generated monotonic **ULIDs** (`pgId`), not DB sequences/UUIDs (so `id` is a sortable string); table/database names come from `@packages/common` `database/enums`; every gRPC handler runs inside a per-request MikroORM `RequestContext` (transactional isolation via `PgRequestInterceptor`).
 - **gRPC topology**: the host → URL → services map is centralized in `@backend/grpc` `grpcConfig` (driven by `*_GRPC_URL` env vars). Adding a service or host means editing it **and** the env var.
-- **Layer direction is lint-enforced**: `auth` and `storage` (plus `@backend/pg`/`mongo`/`nats`) wire a shared `layerGuard()` flat-config helper (`@packages/configs/eslint/layer-guard.mjs`) alongside `nestConfig` in their `eslint.config.mjs`. It forbids outward-to-inward imports (`domain` can't import `application`/`infrastructure`/`interface`, etc.) by path segment, regardless of nesting depth; `*.module.ts`/`main.ts` composition roots are exempt.
+- **Layer direction is lint-enforced**: `auth` and `storage` (plus `@backend/pg`/`mongo`/`nats`/`redis`) wire a shared `layerGuard()` flat-config helper (`@packages/configs/eslint/layer-guard.mjs`) alongside `nestConfig` in their `eslint.config.mjs`. It forbids outward-to-inward imports (`domain` can't import `application`/`infrastructure`/`interface`, etc.) by path segment, regardless of nesting depth; `*.module.ts`/`main.ts` composition roots are exempt.
 
 ### Migrations & the migrator sub-app
 

@@ -2,6 +2,8 @@
 
 Guidance for working inside `backend/packages/nats`. The event-bus codegen flow and emit/subscribe wiring are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file is the package internals: the NATS JetStream runtime.
 
+**Status: dormant.** `auth`/`storage` moved to `@backend/redis`, so no service imports this package and docker-compose no longer starts a `nats` container. It stays generated and buildable (every `pnpm compile:event-bus` refreshes `src/generated/`) as the alternative broker — keep it working when changing the event bus.
+
 ## Dual nature
 
 `src/generated/index.ts` is **emitted by the `@backend/event-bus` compiler** (its Nats adapter) — transports (`Nats<Service>Transport`, service-scoped naming, host dropped), subscriber/handler interfaces, and `NatsClientFactory`. Everything else (`infrastructure/`, `interface/`, `nats.module.ts`) is hand-written runtime. There is no compiler here.

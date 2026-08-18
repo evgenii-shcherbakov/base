@@ -1,20 +1,20 @@
-import {
-  NatsController,
-  NatsEvent,
-  NatsVideoTransport,
-  NatsVideoUploadFailEventHandler,
-  NatsVideoUploadFinishEventHandler,
-} from '@backend/nats';
 import { NestStorage } from '@backend/proto';
+import {
+  RedisController,
+  RedisEvent,
+  RedisVideoTransport,
+  RedisVideoUploadFailEventHandler,
+  RedisVideoUploadFinishEventHandler,
+} from '@backend/redis';
 import { FileUpdateUseCase } from '@modules/file/application/use-cases/file.update.use-case';
 
-@NatsController()
-export class NatsFileController
-  implements NatsVideoUploadFinishEventHandler, NatsVideoUploadFailEventHandler
+@RedisController({ consumer: 'storage.file' })
+export class RedisFileController
+  implements RedisVideoUploadFinishEventHandler, RedisVideoUploadFailEventHandler
 {
   constructor(private readonly updateUseCase: FileUpdateUseCase) {}
 
-  @NatsEvent(NatsVideoTransport.UPLOAD_FAIL)
+  @RedisEvent(RedisVideoTransport.UPLOAD_FAIL)
   async onVideoUploadFail(event: NestStorage.Video): Promise<void> {
     await this.updateUseCase.updateById(event.fileId, {
       set: {
@@ -23,7 +23,7 @@ export class NatsFileController
     });
   }
 
-  @NatsEvent(NatsVideoTransport.UPLOAD_FINISH)
+  @RedisEvent(RedisVideoTransport.UPLOAD_FINISH)
   async onVideoUploadFinish(event: NestStorage.Video): Promise<void> {
     await this.updateUseCase.updateById(event.fileId, {
       set: {

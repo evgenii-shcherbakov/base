@@ -1,7 +1,7 @@
 import { EventBusHost } from '@backend/event-bus';
 import { GrpcModule } from '@backend/grpc';
-import { NatsModule } from '@backend/nats';
 import { PgModule } from '@backend/pg';
+import { RedisModule } from '@backend/redis';
 import { FileModule } from '@modules/file/file.module';
 import { ImageModule } from '@modules/image/image.module';
 import { StorageObjectModule } from '@modules/storage-object/storage-object.module';
@@ -20,7 +20,7 @@ import { config } from './config';
     ConfigModule.forRoot({ isGlobal: true, load: [config] }),
     PgModule.forRoot({ database: Database.STORAGE }),
     GrpcModule.forRoot({ host: 'storage' }),
-    NatsModule.forRoot({ host: EventBusHost.STORAGE }),
+    RedisModule.forRoot({ host: EventBusHost.STORAGE }),
     FileModule,
     StorageObjectModule,
     ImageModule,

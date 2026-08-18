@@ -1,5 +1,5 @@
-import { NatsImageTransport, NatsModule } from '@backend/nats';
 import { PgModule } from '@backend/pg';
+import { RedisImageTransport, RedisModule } from '@backend/redis';
 import { PgImageEntity } from '@common/infrastructure/pg/entities/pg.image.entity';
 import { FileModule } from '@modules/file/file.module';
 import { StorageObjectModule } from '@modules/storage-object/storage-object.module';
@@ -17,7 +17,7 @@ import { GrpcImageController } from './interface/grpc/grpc.image.controller';
 @Module({
   imports: [
     PgModule.forFeature(PgImageEntity),
-    NatsModule.forFeature({ EventBus: NatsImageTransport.EventBus }),
+    RedisModule.forFeature({ EventBus: RedisImageTransport.EventBus }),
     StorageModule,
     FileModule,
     StorageObjectModule,

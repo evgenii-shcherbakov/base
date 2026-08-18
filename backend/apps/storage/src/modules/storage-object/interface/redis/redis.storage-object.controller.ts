@@ -1,20 +1,20 @@
 import { StorageObjectParentUpdateEvent } from '@backend/event-bus';
-import {
-  NatsController,
-  NatsEvent,
-  NatsStorageObjectEventController,
-  NatsStorageObjectTransport,
-  NatsUserCreateEventHandler,
-  NatsUserTransport,
-} from '@backend/nats';
 import { NestAuth } from '@backend/proto';
+import {
+  RedisController,
+  RedisEvent,
+  RedisStorageObjectEventController,
+  RedisStorageObjectTransport,
+  RedisUserCreateEventHandler,
+  RedisUserTransport,
+} from '@backend/redis';
 import { StorageObjectCreateRootFolderUseCase } from '@modules/storage-object/application/use-cases/storage-object.create-root-folder.use-case';
 import { StorageObjectUpdateFolderChildrenUseCase } from '@modules/storage-object/application/use-cases/storage-object.update-folder-children.use-case';
 
-@NatsController()
-@NatsStorageObjectTransport.ControllerMethods()
-export class NatsStorageObjectController
-  implements NatsStorageObjectEventController, NatsUserCreateEventHandler
+@RedisController({ consumer: 'storage.storage-object' })
+@RedisStorageObjectTransport.ControllerMethods()
+export class RedisStorageObjectController
+  implements RedisStorageObjectEventController, RedisUserCreateEventHandler
 {
   constructor(
     private readonly createRootFolderUseCase: StorageObjectCreateRootFolderUseCase,
@@ -25,7 +25,7 @@ export class NatsStorageObjectController
     await this.updateFolderChildrenUseCase.execute(event.parent, event.update);
   }
 
-  @NatsEvent(NatsUserTransport.CREATE)
+  @RedisEvent(RedisUserTransport.CREATE)
   async onUserCreate(event: NestAuth.User): Promise<void> {
     await this.createRootFolderUseCase.execute(event.id);
   }

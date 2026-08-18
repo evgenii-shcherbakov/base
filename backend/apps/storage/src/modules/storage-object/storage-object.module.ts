@@ -1,5 +1,5 @@
-import { NatsModule, NatsStorageObjectTransport } from '@backend/nats';
 import { PgModule } from '@backend/pg';
+import { RedisModule, RedisStorageObjectTransport } from '@backend/redis';
 import { PgStorageObjectEntity } from '@common/infrastructure/pg/entities/pg.storage-object.entity';
 import { StorageModule } from '@modules/storage/storage.module';
 import { Module } from '@nestjs/common';
@@ -15,12 +15,12 @@ import { StorageObjectUpdateOneUseCase } from './application/use-cases/storage-o
 import { StorageObjectRepository } from './domain/repositories/storage-object.repository';
 import { PgStorageObjectRepositoryImpl } from './infrastructure/pg/repositories/pg.storage-object.repository.impl';
 import { GrpcStorageObjectController } from './interface/grpc/grpc.storage-object.controller';
-import { NatsStorageObjectController } from './interface/nats/nats.storage-object.controller';
+import { RedisStorageObjectController } from './interface/redis/redis.storage-object.controller';
 
 @Module({
   imports: [
     PgModule.forFeature(PgStorageObjectEntity),
-    NatsModule.forFeature({ EventBus: NatsStorageObjectTransport.EventBus }),
+    RedisModule.forFeature({ EventBus: RedisStorageObjectTransport.EventBus }),
     StorageModule,
   ],
   providers: [
@@ -38,7 +38,7 @@ import { NatsStorageObjectController } from './interface/nats/nats.storage-objec
     StorageObjectUpdateFolderChildrenUseCase,
     StorageObjectCreateOneUseCase,
   ],
-  controllers: [GrpcStorageObjectController, NatsStorageObjectController],
+  controllers: [GrpcStorageObjectController, RedisStorageObjectController],
   exports: [StorageObjectValidationService],
 })
 export class StorageObjectModule {}

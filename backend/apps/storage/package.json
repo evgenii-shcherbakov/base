@@ -31,7 +31,7 @@
     "@backend/common": "workspace:*",
     "@backend/grpc": "workspace:*",
     "@backend/event-bus": "workspace:*",
-    "@backend/nats": "workspace:*",
+    "@backend/redis": "workspace:*",
     "@backend/pg": "workspace:*",
     "@backend/proto": "workspace:*",
     "@grpc/grpc-js": "1.14.4",

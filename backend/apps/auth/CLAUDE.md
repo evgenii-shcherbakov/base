@@ -4,7 +4,7 @@ Guidance for working inside `backend/apps/auth`. The 4-layer hexagonal/use-case 
 
 ## What this service is
 
-The identity / authentication microservice. gRPC host `auth`, event-bus host `EventBusHost.AUTH`, database `Database.AUTH` (Postgres via `@backend/pg`). Bootstrap (`main.ts`) connects both gRPC and NATS microservices.
+The identity / authentication microservice. gRPC host `auth`, event-bus host `EventBusHost.AUTH`, database `Database.AUTH` (Postgres via `@backend/pg`). Bootstrap (`main.ts`) connects both gRPC and Redis (BullMQ event-bus) microservices.
 
 ## Modules (`src/modules/`)
 
@@ -19,7 +19,7 @@ Separate Nest app via `PgMigrationModule.register` (entities `PgUserEntity`, `Pg
 
 ## Config & env (`src/config.ts`)
 
-Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. Env: `DATABASE_URL`, `AUTH_GRPC_URL`, `NATS_URL`, `JWT_ACCESS_PRIVATE_KEY_BASE64`, `JWT_ACCESS_PUBLIC_KEY_BASE64`, `REFRESH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`. The two key vars hold a base64-encoded RSA PEM pair (decoded via `decodeBase64Pem`) — multi-line PEM does not survive `.env` / docker-compose / Railway.
+Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. Env: `DATABASE_URL`, `AUTH_GRPC_URL`, `REDIS_URL`, `JWT_ACCESS_PRIVATE_KEY_BASE64`, `JWT_ACCESS_PUBLIC_KEY_BASE64`, `REFRESH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`. The two key vars hold a base64-encoded RSA PEM pair (decoded via `decodeBase64Pem`) — multi-line PEM does not survive `.env` / docker-compose / Railway.
 
 ## Commands
 

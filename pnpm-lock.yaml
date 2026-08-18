@@ -185,15 +185,15 @@ importers:
       '@backend/grpc':
         specifier: workspace:*
         version: link:../../packages/grpc
-      '@backend/nats':
-        specifier: workspace:*
-        version: link:../../packages/nats
       '@backend/pg':
         specifier: workspace:*
         version: link:../../packages/pg
       '@backend/proto':
         specifier: workspace:*
         version: link:../../packages/proto
+      '@backend/redis':
+        specifier: workspace:*
+        version: link:../../packages/redis
       '@grpc/grpc-js':
         specifier: 1.14.4
         version: 1.14.4
@@ -321,15 +321,15 @@ importers:
       '@backend/grpc':
         specifier: workspace:*
         version: link:../../packages/grpc
-      '@backend/nats':
-        specifier: workspace:*
-        version: link:../../packages/nats
       '@backend/pg':
         specifier: workspace:*
         version: link:../../packages/pg
       '@backend/proto':
         specifier: workspace:*
         version: link:../../packages/proto
+      '@backend/redis':
+        specifier: workspace:*
+        version: link:../../packages/redis
       '@grpc/grpc-js':
         specifier: 1.14.4
         version: 1.14.4

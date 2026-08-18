@@ -1,5 +1,5 @@
-import { NatsModule, NatsUserTransport } from '@backend/nats';
 import { PgModule } from '@backend/pg';
+import { RedisModule, RedisUserTransport } from '@backend/redis';
 import { CryptoModule } from '@modules/crypto/crypto.module';
 import { Module } from '@nestjs/common';
 import { UserCreateOneUseCase } from './application/use-cases/user.create-one.use-case';
@@ -14,7 +14,7 @@ import { GrpcUserController } from './interface/grpc/grpc.user.controller';
 @Module({
   imports: [
     PgModule.forFeature(PgUserEntity),
-    NatsModule.forFeature({ EventBus: NatsUserTransport.EventBus }),
+    RedisModule.forFeature({ EventBus: RedisUserTransport.EventBus }),
     CryptoModule,
   ],
   providers: [

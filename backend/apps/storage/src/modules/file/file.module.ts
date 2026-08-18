@@ -18,7 +18,7 @@ import { FileRepository } from './domain/repositories/file.repository';
 import { PgFileRepositoryImpl } from './infrastructure/pg/repositories/pg.file.repository.impl';
 import { CronFileScheduler } from './interface/cron/cron.file.scheduler';
 import { GrpcFileController } from './interface/grpc/grpc.file.controller';
-import { NatsFileController } from './interface/nats/nats.file.controller';
+import { RedisFileController } from './interface/redis/redis.file.controller';
 
 @Module({
   imports: [
@@ -43,7 +43,7 @@ import { NatsFileController } from './interface/nats/nats.file.controller';
     FileUpdateUseCase,
     CronFileScheduler,
   ],
-  controllers: [GrpcFileController, NatsFileController],
+  controllers: [GrpcFileController, RedisFileController],
   exports: [FileMapper],
 })
 export class FileModule {}

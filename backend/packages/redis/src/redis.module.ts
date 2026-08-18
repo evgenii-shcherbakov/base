@@ -59,6 +59,7 @@ export class RedisModule {
           return new RedisSubscriptionRegistry(
             connectionService.getClient(),
             configService.getOrThrow('getSubscriptionKey', { infer: true }),
+            configService.getOrThrow('getInvalidationChannel', { infer: true })(),
           );
         },
       },

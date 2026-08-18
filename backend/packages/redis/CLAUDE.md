@@ -4,9 +4,10 @@ Guidance for working inside `backend/packages/redis`. The event-bus codegen flow
 ports are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file is
 the package internals: the Redis/BullMQ runtime.
 
-**Status: implemented but not wired anywhere.** `@backend/nats` is still the live transport; no
-service imports `RedisModule` yet, and no `backend.*` container gets `REDIS_URL`. The
-`docker-compose.yml` `redis` service (profiles `local`/`all`) exists for local experiments.
+**Status: the live transport.** `backend.auth` and `backend.storage` run on it (`RedisModule.forRoot`
++ `REDIS_MICROSERVICE_OPTIONS`, subscribers under `interface/redis/`); `@backend/nats` is dormant.
+`docker-compose.yml` runs a `redis` service in the `local`/`all` profiles and passes `REDIS_URL` to
+both services. `backend.api-gateway` uses no event bus at all.
 
 ## Dual nature
 
@@ -111,11 +112,24 @@ Worker `concurrency` defaults to 1 (the NATS `maxAckPending: 1` equivalent) — 
   reads them back with a 5s TTL cache. Entries are durable: they are never removed on shutdown, so
   jobs pile up in a stopped consumer's queue and are delivered on restart (JetStream durable-consumer
   semantics). Retiring a consumer is a manual `SREM` plus queue cleanup.
+- **Cache invalidation.** A newly registered subscription would stay invisible to already-running
+  mediators until their TTL expires, so `publish()` also announces the changed event ids on
+  `event-bus:subs:changed` and every process drops the matching cache entry at once. Only event ids
+  whose `SADD` actually returned 1 are announced, so restarting a known subscriber is silent. The
+  channel needs its own socket (`connection.duplicate()`): ioredis refuses regular commands on a
+  subscribed connection. Losing the channel is a soft failure — it is logged, and the TTL still
+  expires on its own.
 
 ## Env
 
 `REDIS_URL` (default `redis://localhost:6379`), `REDIS_QUEUE_PREFIX` (default `bull`),
-`REDIS_WORKER_CONCURRENCY` (default `1`), `REDIS_EVENT_BUS_NAMESPACE` (default `event-bus`).
+`REDIS_WORKER_CONCURRENCY` (default `1`), `REDIS_EVENT_BUS_NAMESPACE` (default `event-bus`),
+`REDIS_IP_FAMILY` (default `0`).
+
+`REDIS_IP_FAMILY` is the ioredis `family` option — `0` dual stack, `4` IPv4 only, `6` IPv6 only. It
+defaults to dual stack because managed private networks are often IPv6-only (Railway's
+`*.railway.internal`), where ioredis' default A-record lookup fails with `ENOTFOUND`. Force `6` if
+reconnects turn out flaky on such a network.
 
 ## Commands & gotchas
 
@@ -130,7 +144,16 @@ pnpm dev / lint / format / format:generated / reset
   mediators for the host's own events plus one per subscription. Watch the count as events grow; the
   cheaper alternative is fanning out directly in the producer instead of via the mediator.
 - First-start race: an event emitted before a brand-new consumer has published its subscription
-  passes it by (plus the mediator's 5s cache). The registry is durable, so the window only exists on
-  the very first boot of a new subscription.
+  passes it by — the mediator logs `No consumers registered … dropped` and completes the job. The
+  registry is durable and new subscriptions invalidate the mediators' caches immediately, so the
+  window only exists on the very first boot of a subscription (or after the Redis data is wiped) —
+  a redeploy of a known subscriber is safe, its jobs simply wait in its queue. Seeding the registry
+  by hand closes it on a fresh environment:
+  ```bash
+  redis-cli -u "$REDIS_URL" SADD event-bus:subs:auth.user.create storage.storage-object
+  ```
+  A dropped event can also be replayed from the source queue's `completed` set within the hour
+  (`removeOnComplete: { age: 3600 }`). Failing the job instead of dropping it is **not** an option:
+  events with no subscriber at all (`storage.image.delete`) would retry ten times and fill the DLQ.
 - Handlers must be idempotent (up to 10 attempts, plus at-least-once fan-out).
 - cjs-only; consumers resolve `dist/`, rebuild after changes.

@@ -163,13 +163,11 @@ services:
       API_GATEWAY_GRPC_URL: 0.0.0.0:8000
       AUTH_GRPC_URL: backend.auth:8001
       STORAGE_GRPC_URL: backend.storage:8002
-      NATS_URL: nats://nats:4222
       JWT_ACCESS_PUBLIC_KEY_BASE64: ${JWT_ACCESS_PUBLIC_KEY_BASE64}
     networks:
       - private_network
       - public_network
     depends_on:
-      - nats
       - backend.auth
       - backend.storage
     profiles:

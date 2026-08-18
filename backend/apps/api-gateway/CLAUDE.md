@@ -4,7 +4,7 @@ Guidance for working inside `backend/apps/api-gateway`. The general hexagonal/us
 
 ## What this service is
 
-The edge service — the only HTTP-facing backend. `main.ts` serves **REST + Swagger UI at `/`** (global `ValidationPipe`, `RpcExceptionFilter` + `HttpExceptionFilter`) and **also runs as a gRPC server** (`GrpcModule.forRoot({ host: 'apiGateway' })` — the admin frontend calls it over gRPC). `ThrottlerModule` rate-limits (100 / 60s). It owns **no database and no NATS** (no `@backend/nats` / `@backend/event-bus` dependency); it only proxies inbound REST/gRPC calls to the internal `auth` / `storage` gRPC services. Bootstrap connects a single microservice — `GRPC_MICROSERVICE_OPTIONS` from `@backend/grpc`.
+The edge service — the only HTTP-facing backend. `main.ts` serves **REST + Swagger UI at `/`** (global `ValidationPipe`, `RpcExceptionFilter` + `HttpExceptionFilter`) and **also runs as a gRPC server** (`GrpcModule.forRoot({ host: 'apiGateway' })` — the admin frontend calls it over gRPC). `ThrottlerModule` rate-limits (100 / 60s). It owns **no database and no event bus** (no `@backend/redis` / `@backend/event-bus` dependency); it only proxies inbound REST/gRPC calls to the internal `auth` / `storage` gRPC services. Bootstrap connects a single microservice — `GRPC_MICROSERVICE_OPTIONS` from `@backend/grpc`.
 
 ## Layers (two, by design)
 
@@ -37,7 +37,7 @@ There is **no `grpc-access` module** — authorization is the global `CommonModu
 
 ## Config / commands
 
-`config.ts` is just `commonConfig()`; JWT verification has its own `common/infrastructure/configs/jwt.config.ts`. Env: `PORT`, `API_GATEWAY_GRPC_URL`, `AUTH_GRPC_URL`, `STORAGE_GRPC_URL` (the three `*_GRPC_URL` drive the `@backend/grpc` topology), `JWT_ACCESS_PUBLIC_KEY_BASE64` (base64-encoded RSA public PEM, must match the private key in `backend.auth`). No DB, no migrator; the `NATS_URL` still present in `.env.example` is vestigial (this service uses no event bus).
+`config.ts` is just `commonConfig()`; JWT verification has its own `common/infrastructure/configs/jwt.config.ts`. Env: `PORT`, `API_GATEWAY_GRPC_URL`, `AUTH_GRPC_URL`, `STORAGE_GRPC_URL` (the three `*_GRPC_URL` drive the `@backend/grpc` topology), `JWT_ACCESS_PUBLIC_KEY_BASE64` (base64-encoded RSA public PEM, must match the private key in `backend.auth`). No DB, no migrator, no event-bus vars — this service publishes and consumes no domain events.
 
 ```bash
 pnpm start:dev        # dotenv → nest start --watch service

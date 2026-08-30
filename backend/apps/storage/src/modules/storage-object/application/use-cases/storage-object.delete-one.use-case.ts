@@ -2,7 +2,7 @@ import { NestStorage } from '@backend/proto';
 import { StorageObjectRepository } from '@modules/storage-object/domain/repositories/storage-object.repository';
 import { StorageFileService } from '@modules/storage/domain/services/storage.file.service';
 import { StorageVideoService } from '@modules/storage/domain/services/storage.video.service';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { Either, left } from '@sweet-monads/either';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class StorageObjectDeleteOneUseCase {
 
   async execute(
     query: Partial<NestStorage.StorageObjectQuery>,
-  ): Promise<Either<NotFoundException, NestStorage.StorageObject>> {
+  ): Promise<Either<HttpException, NestStorage.StorageObject>> {
     const entity = await this.storageObjectRepository.getOne<NestStorage.StorageObjectPopulated>(
       query,
       { populate: ['file', 'video'] },
@@ -23,6 +23,12 @@ export class StorageObjectDeleteOneUseCase {
 
     if (entity.isLeft()) {
       return entity;
+    }
+
+    // The root folder is the anchor of the user's tree — every placement resolves through it, so it
+    // is not deletable. It is the only folder without a parent.
+    if (entity.value.isFolder && !entity.value.parentId) {
+      return left(new BadRequestException("You can't delete the root folder"));
     }
 
     if (entity.value.isFolder) {

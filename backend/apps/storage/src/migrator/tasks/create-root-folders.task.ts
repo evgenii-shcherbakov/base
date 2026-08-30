@@ -18,12 +18,27 @@ export class CreateRootFoldersTask implements MigrationTask {
   async up() {
     const users = await firstValueFrom(this.userServiceClient.getMany({ ids: [], roles: [] }));
 
+    // A root folder is unique per user in the database, so a rerun (this task is retried until it
+    // succeeds) must skip the users that already have one instead of hitting the constraint.
+    const existingRootFolders = await this.entityManager.find(
+      PgStorageObjectEntity,
+      { isFolder: true, parent: null },
+      { fields: ['userId'] },
+    );
+
+    const userIdsWithRootFolder = new Set(_.map(existingRootFolders, 'userId'));
+
     _.forEach(users.items, (user) => {
+      if (userIdsWithRootFolder.has(user.id)) {
+        return;
+      }
+
       const folder = this.entityManager.create(PgStorageObjectEntity, {
         userId: user.id,
         type: NestStorage.StorageObjectType.FOLDER,
         name: '',
         isPublic: false,
+        isFolder: true,
         folderPath: '/',
       });
 

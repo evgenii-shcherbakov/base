@@ -27,6 +27,12 @@ export class RedisStorageObjectController
 
   @RedisEvent(RedisUserTransport.CREATE)
   async onUserCreate(event: NestAuth.User): Promise<void> {
-    await this.createRootFolderUseCase.execute(event.id);
+    const result = await this.createRootFolderUseCase.execute(event.id);
+
+    // Throwing marks the job failed, so BullMQ retries it. Swallowing the error here would ack a
+    // write that never happened and the user would stay without a root folder for good.
+    if (result.isLeft()) {
+      throw result.value;
+    }
   }
 }

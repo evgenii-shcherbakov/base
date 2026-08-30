@@ -43,6 +43,7 @@ src/
 
 - `PgEntity<OptProps>` — abstract base with `id`, `createdAt`, `updatedAt` (auto `onUpdate`). Decorate concretes with `@PgSchema({ tableName })` (use a `*DatabaseEntity` enum value from `@packages/common`) and `@PgProp.*`.
 - **IDs are application-generated monotonic ULIDs** (`pgId()` from `ulid`), set in the entity default — not DB sequences/UUIDs. So `id` is a sortable string (matches `NestCommon.Entity.id: string`).
+- `PgProp.Date` pins `timestamptz` **`length: 6`** and `PgProp.Enum` pins **`columnType: 'text'`** so that the metadata matches what `auth` and `storage` already hold. Do not "tidy" these to `length: 3` / `varchar`: every `migrate:new` in both services would then regenerate the same `alter column … type` diff forever, and applying it rewrites the tables under an ACCESS EXCLUSIVE lock and rounds stored timestamps to milliseconds — for changes Postgres treats as no-ops.
 
 ## Migrations (two kinds)
 

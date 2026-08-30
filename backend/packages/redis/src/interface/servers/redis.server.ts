@@ -8,6 +8,7 @@ import {
   RedisQueueRegistry,
   RedisQueueSubscription,
   RedisSubscriptionRegistry,
+  resolveErrorMessage,
 } from '@/infrastructure';
 import { RedisJobContext } from '../contexts';
 
@@ -158,16 +159,22 @@ export class RedisEventBusServer extends Server implements CustomTransportStrate
   }
 
   private static toError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-
     if (typeof error === 'string') {
       return new Error(error);
     }
 
-    const message = (error as { message?: unknown })?.message;
+    const message = resolveErrorMessage(error);
 
-    return new Error(typeof message === 'string' ? message : 'Redis event handler failed');
+    if (!(error instanceof Error)) {
+      return new Error(message);
+    }
+
+    // A message-less wrapper (a MikroORM `DriverException`, say) reaches this point when
+    // the handler threw outside the interceptor's observable. Keep the original as the
+    // cause and reuse its stack, but surface the recovered message — that is the string
+    // BullMQ writes into `failedReason`.
+    return error.message === message
+      ? error
+      : Object.assign(new Error(message), { cause: error, stack: error.stack });
   }
 }

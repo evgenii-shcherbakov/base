@@ -36,6 +36,7 @@
     "reset:frontend": "turbo run reset --filter=\"frontend.*\"",
     "reset:modules": "turbo run reset:modules && rm -rf node_modules",
     "docker:local": "docker compose -f docker-compose.yml --profile local up --build",
+    "docker:local:d": "docker compose -f docker-compose.yml --profile local up --build -d",
     "docker": "docker compose -f docker-compose.yml --profile all up --build"
   },
   "dependencies": {

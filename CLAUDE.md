@@ -52,6 +52,7 @@ pnpm build:backend.auth       # one service
 pnpm lint                     # eslint --fix across workspaces
 pnpm format                   # prettier
 pnpm docker:local             # postgres + redis only (for local dev against real infra)
+pnpm docker:local:d           # the same, detached
 pnpm docker                   # full stack in prod mode
 pnpm gen:package              # scaffold a new package via turbo generator (packages only; apps are hand-made)
 ```
@@ -74,7 +75,7 @@ pnpm migrate                  # run pending migrations + data-seeding tasks
 pnpm migrate:tasks            # run only the data-seeding tasks (migrator/tasks/)
 ```
 
-**Tests, lint & strictness:** Jest is configured per backend app (`pnpm test`, `pnpm test:watch`, single file: `pnpm test -- path/to/file.spec.ts`), but **no `*.spec.ts` files exist yet** — there is currently no test suite. The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`), so the linter won't catch those. TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin but **off** for backend apps and `@backend/packages/*`.
+**Tests, lint & strictness:** Jest is configured per package that has tests (`pnpm test`, `pnpm test:watch`, single file: `pnpm test -- path/to/file.spec.ts`) — there is no root `test` script and no turbo `test` task, so run it inside the package. The **only** suite so far is `@backend/redis` (`src/**/*.spec.ts`); the backend apps carry a jest config but still have zero specs, which is why wiring a repo-wide `turbo run test` would fail on them. The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`), so the linter won't catch those. TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin but **off** for backend apps and `@backend/packages/*`.
 
 ## Code navigation (LSP vs grep)
 

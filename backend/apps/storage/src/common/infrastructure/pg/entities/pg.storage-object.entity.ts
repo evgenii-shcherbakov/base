@@ -3,11 +3,25 @@ import { NestStorage } from '@backend/proto';
 import { PgImageEntity } from '@common/infrastructure/pg/entities/pg.image.entity';
 import { PgVideoEntity } from '@common/infrastructure/pg/entities/pg.video.entity';
 import { Collection, Ref } from '@mikro-orm/core';
-import { ManyToOne, OneToMany, OneToOne, Property } from '@mikro-orm/decorators/legacy';
+import { Index, ManyToOne, OneToMany, OneToOne, Property } from '@mikro-orm/decorators/legacy';
 import { StorageObject } from '@modules/storage-object/domain/entities/storage-object.interface';
 import { StorageDatabaseEntity } from '@packages/common';
 import { PgFileEntity } from './pg.file.entity';
 
+export const ROOT_FOLDER_UNIQUE_INDEX = 'storage-objects_root_folder_unique';
+
+/**
+ * A user owns exactly one root folder. Enforced in the database rather than by a read-then-write
+ * check, because the `auth.user.create` subscriber is at-least-once: two replicas (or a stalled
+ * BullMQ job handed to a second worker) would otherwise both see "no folder" and both insert.
+ */
+@Index({
+  name: ROOT_FOLDER_UNIQUE_INDEX,
+  expression:
+    `create unique index "${ROOT_FOLDER_UNIQUE_INDEX}" ` +
+    `on "${StorageDatabaseEntity.STORAGE_OBJECT}" ("user_id") ` +
+    `where "is_folder" = true and "parent_id" is null`,
+})
 @PgSchema({ tableName: StorageDatabaseEntity.STORAGE_OBJECT })
 export class PgStorageObjectEntity
   extends PgEntity<'children' | 'isDeleted' | 'fileId' | 'imageId' | 'videoId' | 'parentId'>

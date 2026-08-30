@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import { RedisQueueClient } from '../clients';
 import { buildConsumerQueueName, buildFanOutJobId } from '../constants';
 import { RedisSubscriptionRegistry } from '../registry';
+import { resolveErrorMessage } from '../utils';
 
 export type RedisMediatorParams = {
   eventIds: string[];
@@ -37,7 +38,11 @@ export class RedisMediatorService implements OnApplicationBootstrap, OnApplicati
       });
 
       worker.on('failed', (job, error) => {
-        this.logger.error(`Fan-out of "${eventId}" job ${job?.id} failed: ${error.message}`);
+        // Same reason as in the server strategy: a wrapper error (an ioredis `AggregateError`
+        // when the node is unreachable) carries no message of its own.
+        this.logger.error(
+          `Fan-out of "${eventId}" job ${job?.id} failed: ${resolveErrorMessage(error, 'unknown error')}`,
+        );
       });
 
       this.workers.push(worker);

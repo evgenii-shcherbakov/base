@@ -9,9 +9,15 @@ import {
   UpdateOf,
 } from '@backend/common';
 import type { NestCommon } from '@backend/proto';
-import { FilterQuery, Populate, RequiredEntityData, wrap } from '@mikro-orm/core';
+import {
+  FilterQuery,
+  Populate,
+  RequiredEntityData,
+  UniqueConstraintViolationException,
+  wrap,
+} from '@mikro-orm/core';
 import { EntityManager, EntityRepository } from '@mikro-orm/postgresql';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Either, left, right } from '@sweet-monads/either';
 import _ from 'lodash';
 import { PgEntity } from '../entities';
@@ -53,6 +59,19 @@ export abstract class PgRepositoryImpl<
     }
 
     return entity;
+  }
+
+  /**
+   * Turns a driver-level unique violation into a `ConflictException`, the way a miss becomes a
+   * `NotFoundException`. Callers can then tell "this row already exists" from a real write failure
+   * — the difference matters for idempotent event handlers, which treat the former as success.
+   */
+  protected toRepositoryError(error: unknown): Error {
+    if (error instanceof UniqueConstraintViolationException) {
+      return new ConflictException(`${this.repository.getEntityName()} already exists`);
+    }
+
+    return error as Error;
   }
 
   protected getPopulate<E extends NestCommon.Entity = Entity>(options: OptionsOf<E> = {}) {
@@ -228,7 +247,7 @@ export abstract class PgRepositoryImpl<
       await this.em.flush();
       return right(this.mapper.stringifyMany(entities));
     } catch (error) {
-      return left(error as Error);
+      return left(this.toRepositoryError(error));
     }
   }
 
@@ -238,7 +257,7 @@ export abstract class PgRepositoryImpl<
       await this.em.persist(entity).flush();
       return right(this.mapper.stringify(entity));
     } catch (error) {
-      return left(error as Error);
+      return left(this.toRepositoryError(error));
     }
   }
 

@@ -37,6 +37,8 @@ src/
 
 `PgRepositoryImpl<Doc, Entity, …>` `implements DatabaseRepository` over an `EntityManager`. `convertUpdate` maps `UpdateOf` `{ set, remove, inc }` → `assign` / `null` / `+=`. `updateMany`/`deleteMany` page in batches of 100; `bulkUpdate` groups by filter key and `$in`s. Returns `Either`; misses → `NotFoundException`; rows mapped via `PgMapper`.
 
+`saveOne`/`saveMany` additionally run their `catch` through `toRepositoryError`, which turns a MikroORM `UniqueConstraintViolationException` into a `ConflictException`. Callers can then tell "this row already exists" from a real write failure — an at-least-once event handler treats the former as success and must retry on the latter (see `StorageObjectCreateRootFolderUseCase` in `backend.storage`).
+
 ## Entities & IDs
 
 - `PgEntity<OptProps>` — abstract base with `id`, `createdAt`, `updatedAt` (auto `onUpdate`). Decorate concretes with `@PgSchema({ tableName })` (use a `*DatabaseEntity` enum value from `@packages/common`) and `@PgProp.*`.

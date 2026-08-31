@@ -26,6 +26,7 @@ The hand-written core of the backend's data layer: the abstract **contracts** th
 - `commonConfig()` / `CommonConfig` — base config (`port`, `isDevelopment`) every service `config.ts` spreads.
 - `MemoryCache<Value>` — TTL Map cache (per-key `setTimeout` eviction).
 - `HttpExceptionMapper.getMessage()` — extracts a string message from a Nest `HttpException`.
+- `resolveErrorMessage(error, fallback?)` — first non-empty message in an error's `cause` chain, descending into an `AggregateError`'s `errors`, with the error's class name as the last resort. A wrapper error often carries none of its own (a MikroORM `DriverException` over the `AggregateError` Node raises for a refused connection). Shared because both event-bus transports need it: `@backend/redis` writes the result into a BullMQ job's `failedReason` (its DLQ), and `@backend/nats` has no DLQ at all, so the log line is the only record of a failure. Callers pass their own `fallback` (`REDIS_ERROR_FALLBACK` / `NATS_ERROR_FALLBACK`) to name the subsystem.
 - `decodeBase64Pem(value)` — decodes a base64-encoded PEM key from an env var (multi-line PEM does not survive `.env` / docker-compose / Railway).
 
 ## Commands
@@ -33,10 +34,14 @@ The hand-written core of the backend's data layer: the abstract **contracts** th
 ```bash
 pnpm build            # tsdown → dist (cjs + d.ts)
 pnpm dev              # tsdown --watch
+pnpm test             # jest; single file: pnpm test -- error.utils
+pnpm test:watch
 pnpm lint             # eslint --fix
 pnpm format           # prettier src
 pnpm reset            # rm -rf .turbo dist node_modules
 ```
+
+Specs sit next to their subject (`*.spec.ts` under `src/`) and are excluded from the turbo `build` inputs. A spec must import its subject by relative path, not through `@backend/common`: the barrel pulls in `commonConfig`, which validates env at import time.
 
 Consumers resolve `dist/`; turbo's `^build` rebuilds before downstream `build`/`compile`. Rebuild after changes or run `pnpm dev`.
 

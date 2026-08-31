@@ -1,7 +1,8 @@
+import { resolveErrorMessage } from '@backend/common';
 import { CallHandler, ExecutionContext, Logger, NestInterceptor } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { catchError, Observable, throwError } from 'rxjs';
-import { resolveErrorMessage } from '@/infrastructure';
+import { REDIS_ERROR_FALLBACK } from '@/infrastructure';
 
 /**
  * Logs a failing handler and rethrows. Unlike the NATS interceptor there is no manual
@@ -35,7 +36,7 @@ export class RedisControllerInterceptor implements NestInterceptor {
           return throwError(() => err);
         }
 
-        return throwError(() => new RpcException(resolveErrorMessage(err)));
+        return throwError(() => new RpcException(resolveErrorMessage(err, REDIS_ERROR_FALLBACK)));
       }),
     );
   }

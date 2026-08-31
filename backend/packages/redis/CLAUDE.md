@@ -42,7 +42,7 @@ Concrete adapter for the abstract ports of `@backend/event-bus`:
 
 - **infrastructure/** — driven/outbound: `configs/` (connection, queue/worker/job options, subscription
   key), `constants/` (DI tokens, queue-name helpers), `types/` (`RedisQueueSubscription`), `utils/`
-  (`globalQueueRegistry`, `resolveErrorMessage`), `connections/` (the shared ioredis client), `clients/`
+  (`globalQueueRegistry`), `connections/` (the shared ioredis client), `clients/`
   (`RedisQueueClient` — the queue pool used for emitting), `registry/` (`RedisSubscriptionRegistry`),
   `mediators/` (`RedisMediatorService` — the fan-out workers).
 - **interface/** — driving/inbound: `decorators/` (`@RedisController`, `@RedisEvent`), `contexts/`
@@ -115,11 +115,12 @@ erase it on the way, so both are handled:
   Node's `AggregateError` (one entry per address tried) — both message-less, with the real reason
   ("connect ECONNREFUSED ::1:5432") two levels down.
 
-`resolveErrorMessage()` (`infrastructure/utils/redis.error.utils.ts`) is the shared answer: it takes
-the first non-empty message in the `cause` chain, descending into an `AggregateError`'s `errors`, and
-falls back to the error's class name (`DriverException`) before the generic default. Both the
+`resolveErrorMessage()` from **`@backend/common`** is the shared answer: it takes the first non-empty
+message in the `cause` chain, descending into an `AggregateError`'s `errors`, and falls back to the
+error's class name (`DriverException`) before the caller's default (`REDIS_ERROR_FALLBACK`). Both the
 interceptor and `RedisEventBusServer.toError` use it — the latter still guards handlers that throw
-outside the interceptor's observable.
+outside the interceptor's observable. It lives in `@backend/common` rather than here because
+`@backend/nats` needs it for the same reason (no DLQ there at all — the log line is the only record).
 
 ## Registries
 
@@ -154,7 +155,7 @@ reconnects turn out flaky on such a network.
 
 ```bash
 pnpm build            # format:generated → tsdown → dist (cjs + d.ts)
-pnpm test             # jest; single file: pnpm test -- redis.error.utils
+pnpm test             # jest; single file: pnpm test -- redis.queue.constants
 pnpm dev / test:watch / lint / format / format:generated / reset
 ```
 

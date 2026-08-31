@@ -11,6 +11,9 @@ export const QUEUE_CONSUMER_SEPARATOR = '@';
 /** Lowercase dot/dash segments, e.g. `storage.file`, `storage.storage-object`. */
 export const CONSUMER_ID_REG_EXP = /^[a-z0-9]+([.-][a-z0-9]+)*$/;
 
+/** Fallback message for a failure with nothing readable in its `cause` chain. */
+export const REDIS_ERROR_FALLBACK = 'Redis event handler failed';
+
 export const buildConsumerQueueName = (eventId: string, consumerId: string): string => {
   return `${eventId}${QUEUE_CONSUMER_SEPARATOR}${consumerId}`;
 };

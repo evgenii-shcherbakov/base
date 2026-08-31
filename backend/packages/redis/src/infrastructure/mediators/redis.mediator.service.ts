@@ -1,10 +1,10 @@
+import { resolveErrorMessage } from '@backend/common';
 import { Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { Job, Worker, WorkerOptions } from 'bullmq';
 import Redis from 'ioredis';
 import { RedisQueueClient } from '../clients';
 import { buildConsumerQueueName, buildFanOutJobId } from '../constants';
 import { RedisSubscriptionRegistry } from '../registry';
-import { resolveErrorMessage } from '../utils';
 
 export type RedisMediatorParams = {
   eventIds: string[];

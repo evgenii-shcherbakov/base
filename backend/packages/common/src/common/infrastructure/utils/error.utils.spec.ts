@@ -1,7 +1,7 @@
 import { RpcException } from '@nestjs/microservices';
-import { resolveErrorMessage } from './redis.error.utils';
+import { resolveErrorMessage } from './error.utils';
 
-const DEFAULT_MESSAGE = 'Redis event handler failed';
+const DEFAULT_MESSAGE = 'Unknown error';
 
 /** Stands in for MikroORM's exception, which is just an `Error` subclass. */
 class DriverException extends Error {}

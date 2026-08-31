@@ -1,4 +1,4 @@
-const DEFAULT_MESSAGE = 'Redis event handler failed';
+const DEFAULT_MESSAGE = 'Unknown error';
 
 /** Cause chains are shallow in practice; the limit only guards pathological nesting. */
 const MAX_DEPTH = 10;
@@ -15,9 +15,13 @@ const trim = (value: unknown): string => (typeof value === 'string' ? value.trim
  * refused on several addresses — itself message-less, with the real reason
  * ("connect ECONNREFUSED 127.0.0.1:5432") one more level down in `errors`.
  *
- * BullMQ persists `error.message` into `failedReason` and the `failed` set is this bus'
- * DLQ, so an empty message leaves a job there that cannot be triaged without correlating
- * timestamps against the service logs.
+ * It lives here rather than in one adapter because both event-bus transports need it: the
+ * Redis one persists `error.message` into a BullMQ job's `failedReason` — the `failed` set
+ * is its DLQ, and an empty message leaves a job there that cannot be triaged without
+ * correlating timestamps against the service logs — and the NATS one has no DLQ at all, so
+ * the log line is the only record a failure leaves behind.
+ *
+ * Callers pass their own `fallback` to say which subsystem the failure came from.
  */
 export const resolveErrorMessage = (error: unknown, fallback: string = DEFAULT_MESSAGE): string =>
   findMessage(error, new Set(), 0) || describeError(error) || fallback;

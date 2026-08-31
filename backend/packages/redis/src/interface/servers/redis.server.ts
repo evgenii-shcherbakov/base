@@ -1,3 +1,4 @@
+import { resolveErrorMessage } from '@backend/common';
 import { Logger } from '@nestjs/common';
 import { CustomTransportStrategy, Server } from '@nestjs/microservices';
 import { Job, Worker, WorkerOptions } from 'bullmq';
@@ -5,10 +6,10 @@ import Redis from 'ioredis';
 import { isObservable, lastValueFrom } from 'rxjs';
 import {
   isConsumerQueueName,
+  REDIS_ERROR_FALLBACK,
   RedisQueueRegistry,
   RedisQueueSubscription,
   RedisSubscriptionRegistry,
-  resolveErrorMessage,
 } from '@/infrastructure';
 import { RedisJobContext } from '../contexts';
 
@@ -163,7 +164,7 @@ export class RedisEventBusServer extends Server implements CustomTransportStrate
       return new Error(error);
     }
 
-    const message = resolveErrorMessage(error);
+    const message = resolveErrorMessage(error, REDIS_ERROR_FALLBACK);
 
     if (!(error instanceof Error)) {
       return new Error(message);

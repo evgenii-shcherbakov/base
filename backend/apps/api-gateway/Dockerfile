@@ -20,9 +20,24 @@ COPY ./turbo.prod.json ./turbo.json
 RUN turbo prune backend.api-gateway --docker
 
 FROM base AS builder
-RUN apk add --no-cache protobuf protobuf-dev
-ENV PATH="/usr/bin:${PATH}"
-ENV PROTO_PATH=protoc
+# Pinned: `protoc` 35.1 stamps the generated sources with `protoc v7.35.1`, which is what the
+# committed output under */packages/proto/src carries. Alpine's `protobuf` package tops out at 31.1
+# and moves under us, so take the upstream release instead — it is a static binary and needs no
+# libc. `include/` ships the well-known types protoc resolves relative to its own path.
+ARG PROTOC_VERSION=35.1
+RUN apk add --no-cache curl unzip && \
+    case "$(apk --print-arch)" in \
+      x86_64) PROTOC_ARCH=x86_64 ;; \
+      aarch64) PROTOC_ARCH=aarch_64 ;; \
+      *) echo "unsupported architecture: $(apk --print-arch)" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL -o /tmp/protoc.zip \
+      "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${PROTOC_ARCH}.zip" && \
+    unzip -q /tmp/protoc.zip -x readme.txt -d /usr/local && \
+    rm /tmp/protoc.zip && \
+    chmod +x /usr/local/bin/protoc && \
+    [ "$(protoc --version)" = "libprotoc ${PROTOC_VERSION}" ]
+ENV PROTOC_PATH=/usr/local/bin/protoc
 ENV GRPC_COMPILER_CONTEXT=backend
 COPY --from=prepare /app/out/json/ .
 RUN --mount=type=cache,id=s/ac0367f3-129a-48c7-b4f7-428cc3349f23-/pnpm/store,target=/pnpm/store \

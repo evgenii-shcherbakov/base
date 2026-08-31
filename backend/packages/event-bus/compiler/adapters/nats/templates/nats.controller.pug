@@ -18,6 +18,11 @@ each method in data.service.methods
 |
 |export const #{transport} = {
 |   ...#{pattern},
+|   /**
+|    * Binds the service's own events. The patterns stay bare subjects here —
+|    * `@NatsController({ consumer })` rewrites them into `<subject>@<consumerId>`,
+|    * so it must be applied above this decorator.
+|    */
 |   ControllerMethods: (): ClassDecorator => {
 |       const methodsDecorator = function(constructor: Function) {
 |
@@ -42,7 +47,7 @@ each method in data.service.methods
 each method in data.service.methods
     |   #{method.handlerName}(
     |       event: #{method.type},
-    |       context?: NatsJetStreamContext,
+    |       context?: NatsMessageContext,
     |   ): void | Promise<void> | Observable<void>;
     |
 |}
@@ -52,7 +57,7 @@ each method in data.service.methods
     |export interface Nats#{method.externalInterfaceName} {
     |   #{method.externalHandlerName}(
     |       event: #{method.type},
-    |       context?: NatsJetStreamContext,
+    |       context?: NatsMessageContext,
     |   ): void | Promise<void> | Observable<void>;
     |}
     |

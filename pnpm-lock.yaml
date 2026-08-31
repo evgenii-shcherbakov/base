@@ -458,12 +458,24 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
     devDependencies:
+      '@nestjs/microservices':
+        specifier: 11.1.27
+        version: 11.1.27(@grpc/grpc-js@1.14.4)(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(ioredis@5.11.1)(nats@2.29.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@packages/configs':
         specifier: workspace:*
         version: link:../../../packages/configs
+      '@types/jest':
+        specifier: 30.0.0
+        version: 30.0.0
       '@types/lodash':
         specifier: 4.17.23
         version: 4.17.23
+      jest:
+        specifier: 30.3.0
+        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
+      ts-jest:
+        specifier: 29.4.9
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
 
   backend/packages/event-bus:
     dependencies:
@@ -602,9 +614,6 @@ importers:
       '@backend/proto':
         specifier: workspace:*
         version: link:../proto
-      '@nestjs-plugins/nestjs-nats-jetstream-transport':
-        specifier: 2.2.6
-        version: 2.2.6
       '@nestjs/common':
         specifier: 11.1.27
         version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -617,9 +626,15 @@ importers:
       '@packages/common':
         specifier: workspace:*
         version: link:../../../packages/common
+      change-case-all:
+        specifier: 2.1.0
+        version: 2.1.0
       lodash:
         specifier: 4.18.1
         version: 4.18.1
+      nats:
+        specifier: 2.29.3
+        version: 2.29.3
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
@@ -630,9 +645,18 @@ importers:
       '@packages/configs':
         specifier: workspace:*
         version: link:../../../packages/configs
+      '@types/jest':
+        specifier: 30.0.0
+        version: 30.0.0
       '@types/lodash':
         specifier: 4.17.23
         version: 4.17.23
+      jest:
+        specifier: 30.3.0
+        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
+      ts-jest:
+        specifier: 29.4.9
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
 
   backend/packages/pg:
     dependencies:
@@ -2344,9 +2368,6 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
-
-  '@nestjs-plugins/nestjs-nats-jetstream-transport@2.2.6':
-    resolution: {integrity: sha512-za5yLceHYcqrl51HZUO63PyYHB5zzIv0t+dg5kFT3AUUrmbhdClTZzhyunIwQP5AJ7KiHA6lQxiL8BX81CVgeQ==}
 
   '@nestjs/cli@11.0.23':
     resolution: {integrity: sha512-2V0Bf5jz0KXhUZk3eJi9GljIyqH04otwsE/mYLbqJR+X0iiYx+6bkNJ2Qz28uHNFj1cpHgimf9xDzHkqarie0g==}
@@ -6579,9 +6600,6 @@ packages:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
 
-  reflect-metadata@0.1.14:
-    resolution: {integrity: sha512-ZhYeb6nRaXCfhnndflDK8qI6ZQ/YcWZCISRAWICW9XYqMUwjZM9Z0DveWX/ABN01oxSHwVxKQmxeYZSsm0jh5A==}
-
   reflect-metadata@0.2.2:
     resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
@@ -9087,12 +9105,6 @@ snapshots:
       '@emnapi/runtime': 1.11.1
       '@tybys/wasm-util': 0.10.3
     optional: true
-
-  '@nestjs-plugins/nestjs-nats-jetstream-transport@2.2.6':
-    dependencies:
-      nats: 2.29.3
-      reflect-metadata: 0.1.14
-      rxjs: 7.8.2
 
   '@nestjs/cli@11.0.23(@types/node@22.19.17)(prettier@3.9.4)':
     dependencies:
@@ -13928,8 +13940,6 @@ snapshots:
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
-
-  reflect-metadata@0.1.14: {}
 
   reflect-metadata@0.2.2: {}
 

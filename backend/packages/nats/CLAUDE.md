@@ -1,62 +1,173 @@
 # CLAUDE.md — @backend/nats
 
-Guidance for working inside `backend/packages/nats`. The event-bus codegen flow and emit/subscribe wiring are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file is the package internals: the NATS JetStream runtime.
+Guidance for working inside `backend/packages/nats`. The event-bus codegen flow and the abstract
+ports are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file
+is the package internals: the NATS JetStream runtime.
 
-**Status: dormant.** `auth`/`storage` moved to `@backend/redis`, so no service imports this package and docker-compose no longer starts a `nats` container. It stays generated and buildable (every `pnpm compile:event-bus` refreshes `src/generated/`) as the alternative broker — keep it working when changing the event bus.
+**Status: dormant.** `auth`/`storage` run on `@backend/redis`, so no service imports this package
+and `docker-compose.yml` starts no `nats` container. It stays generated, built and unit-tested as
+the alternative broker — keep it working when changing the event bus.
 
 ## Dual nature
 
-`src/generated/index.ts` is **emitted by the `@backend/event-bus` compiler** (its Nats adapter) — transports (`Nats<Service>Transport`, service-scoped naming, host dropped), subscriber/handler interfaces, and `NatsClientFactory`. Everything else (`infrastructure/`, `interface/`, `nats.module.ts`) is hand-written runtime. There is no compiler here.
+`src/generated/index.ts` is **emitted by the `@backend/event-bus` compiler** (its Nats adapter) —
+transports (`Nats<Service>Transport`, service-scoped naming, host dropped), subscriber/handler
+interfaces, `NatsClientFactory` and `NATS_HOST_STREAMS`. Everything else (`infrastructure/`,
+`interface/`, `nats.module.ts`) is hand-written runtime. There is no compiler here.
+
+## Consumer-scoped subscriptions
+
+The adapter is shaped like `@backend/redis`: a controller declares its system-wide id once, and
+every subscription is scoped by it.
+
+```ts
+@NatsController({ consumer: 'storage.file' })
+@NatsStorageObjectTransport.ControllerMethods()
+export class NatsStorageObjectController
+  implements NatsStorageObjectEventController, NatsUserCreateEventHandler
+{
+  async onParentUpdate(event: StorageObjectParentUpdateEvent): Promise<void> {}
+
+  @NatsEvent(NatsUserTransport.CREATE)
+  async onUserCreate(@Payload() event: NestAuth.User, @Ctx() context: NatsMessageContext) {}
+}
+```
+
+- `consumer` is the controller's system-wide id (`<host>.<module>`). Declared once, in
+  `@NatsController`.
+- **Decorator order matters.** Method decorators run before class decorators, so
+  `ControllerMethods()` and `@NatsEvent` can only store the bare subject; `@NatsController` runs
+  last (class decorators apply bottom-up) and rewrites `PATTERN_METADATA` into
+  `<subject>@<consumerId>`. Keep `@NatsController` **above** the transport decorator. A pattern
+  that reaches the strategy without the suffix fails bootstrap with an explicit message.
+- The `@` suffix is a **process-local Nest map key only** — unlike Redis, where the same string
+  names a real BullMQ queue. `NatsEventBusServer` strips it before touching NATS: the subject
+  stays `auth-user-create`, and the consumer id goes into the durable name instead
+  (`storage-file-auth-user-create`, see `buildDurableName`).
+- `context?: NatsMessageContext` is only injected when decorated with `@Ctx()` (and then the
+  payload needs `@Payload()`) — standard Nest behaviour.
+
+### Why this exists
+
+Without it, two controllers of the same host on one subject collapse: Nest keys `messageHandlers`
+by pattern, so the second registration replaces the first, and both would sit behind one durable
+that load-balances instead of fanning out. That was the behaviour of the old
+`@nestjs-plugins/nestjs-nats-jetstream-transport` wiring, which derived a single durable per
+(host, subject) from one `consumerOptions` object per host.
+
+### Why there is no mediator
+
+`@backend/redis` needs `RedisMediatorService` + `RedisSubscriptionRegistry` because BullMQ is a
+work queue: a job goes to exactly one worker, so fan-out has to be re-published by hand. JetStream
+delivers a copy to **every** durable consumer of a subject, so the fan-out stage and the
+distributed subscriber registry have no counterpart here — one durable per (subject, consumerId)
+is the whole mechanism. The slot the mediator occupies in `RedisModule.forRoot` (a host-owned
+provider that runs even in `onlyEmitting` mode) is taken by `NatsStreamProvisionerService`.
+
+## Why the wrapper library is gone
+
+`@nestjs-plugins/nestjs-nats-jetstream-transport` takes the Nest pattern as the subject and builds
+one consumer config per host, so it cannot express a per-controller durable. The package now sits
+directly on `nats@2.29.3` and owns its connection, client and server, mirroring the
+connection → client → server layout of `@backend/redis`.
+
+`nats@2.29.3` is marked deprecated in favour of `@nats-io/transport-node` (nats.js v3). Staying on
+2.x is deliberate: the consumer API used here (`jsm.consumers.add` + `js.consumers.get().consume()`)
+is present, and a v3 migration is its own task.
 
 ## Layer map (hexagon)
 
-This package is the **concrete adapter** for the abstract ports declared in
-`@backend/event-bus`. It owns the infrastructure + interface sides of the
-event-bus hexagon (the domain/ports side lives in `@backend/event-bus`):
+Concrete adapter for the abstract ports of `@backend/event-bus`:
 
-- **infrastructure/** — driven/outbound: `configs/` (connection + JetStream
-  consumer options), `constants/` (DI tokens), `types/` (`NatsStreamData`),
-  `utils/` (`globalStreamRegistry`). Plus the generated `NatsClientImpl` /
-  `NatsClientFactory` (concrete emit client).
-- **interface/** — driving/inbound: `decorators/` (`@NatsController`,
-  `@NatsEvent`), `interceptors/` (ack/nak). Plus the generated
-  `Nats<Service>Transport` + controller/handler interfaces.
-- **nats.module.ts** — composition root: `forRoot` (server+client),
-  `forFeature` (bind abstract bus → concrete client via `NatsClientFactory`).
-- **generated/** — single codegen file that **spans both layers** (client =
-  infra, transports/interfaces = interface); left as one file by design (not
-  split per layer). Never hand-edit.
+- **infrastructure/** — driven/outbound: `configs/` (connection, stream and consumer options),
+  `constants/` (DI tokens, pattern/durable helpers), `types/` (`NatsStreamData`,
+  `NatsConsumerSubscription`), `utils/` (`globalStreamRegistry`, `globalConsumerRegistry`),
+  `connections/` (the shared `NatsConnection`), `clients/` (`NatsJetStreamClient` — the publisher),
+  `provisioners/` (`NatsStreamProvisionerService` — declares the host's streams).
+- **interface/** — driving/inbound: `decorators/` (`@NatsController`, `@NatsEvent`), `contexts/`
+  (`NatsMessageContext`), `interceptors/` (ack/nak), `servers/` (`NatsEventBusServer`, the
+  `CustomTransportStrategy` that runs the durable consumers).
+- **nats.module.ts** — composition root: `forRoot` (connection + client + stream provisioner, and
+  the server strategy unless `onlyEmitting`), `forFeature` (bind abstract bus → concrete client).
+- **generated/** — one codegen file spanning both layers; never hand-edit.
 
-Public API is the flat root `src/index.ts` barrel — consumers import flat
-symbols (`NatsModule`, `@NatsController`, `Nats*Transport`,
-`NATS_MICROSERVICE_OPTIONS`), never deep paths. Inside the package, `@/*`
-aliases `src/*` (e.g. `@/infrastructure`, `@/generated`).
+Public API is the flat root `src/index.ts` barrel. Inside the package `@/*` aliases `src/*`.
 
 ## Module (`nats.module.ts`)
 
-- `NatsModule.forRoot({ host: EventBusHost, onlyEmitting? })` — global. Wires the JetStream client transport; unless `onlyEmitting`, also provides `NATS_MICROSERVICE_OPTIONS` (the subscriber server, connected in `main.ts`). Server options come from `natsConfig.getServerOptions(host, globalStreamRegistry.getStreams())`, declaring the registered JetStream streams at bootstrap.
-- `NatsModule.forFeature({ EventBus })` — binds an abstract bus (from `@backend/event-bus`) to its concrete client impl via `NatsClientFactory`, so use-cases can inject it and `emit*`.
+- `NatsModule.forRoot({ host: EventBusHost, onlyEmitting? })` — global. Always provides the shared
+  connection, `NatsJetStreamClient` and the **stream provisioner**: a host must declare the streams
+  of the events it owns even when it only emits, otherwise it publishes into a stream that does not
+  exist. Unless `onlyEmitting`, it also provides `NATS_MICROSERVICE_OPTIONS`, connected in `main.ts`
+  via `app.connectMicroservice(app.get(NATS_MICROSERVICE_OPTIONS))`.
+- `NatsModule.forFeature({ EventBus })` — binds an abstract bus to its concrete client via
+  `NatsClientFactory`, exactly like `RedisModule.forFeature`.
+- The connection provider is registered **last** on purpose: Nest runs shutdown hooks in provider
+  order, so the socket is drained after the consumers are stopped.
 
-## Decorators & interceptor (`interface/`)
+## Streams & registries
 
-- `@NatsController()` = `Controller` + `NatsControllerInterceptor`.
-- `@NatsEvent({ pattern, registerStream? })` = `EventPattern` + stream registration (used to subscribe to another host's event).
-- `NatsControllerInterceptor` does **manual ack/nak**: handler success → `msg.ack()`, error → log + `msg.nak()` + rethrow.
+- Stream names stay host-scoped: `<host>-<service>-stream` (`auth-user-stream`), subjects are the
+  kebab-cased event ids (`auth-user-create`) — only the generated class names dropped the host.
+- `globalStreamRegistry` accumulates `stream → subjects` as `ControllerMethods()` / `@NatsEvent`
+  run on class load; the server strategy reads it to declare the streams it **consumes** (their
+  owner may not have started yet) and to resolve a subject to its stream.
+- `globalConsumerRegistry` accumulates `NatsConsumerSubscription` entries as `@NatsController` runs;
+  the strategy reads it at `listen()` to create one durable per entry. Mirrors `globalQueueRegistry`.
+- `NATS_HOST_STREAMS` (generated) maps host → the streams it **owns**; `forRoot` feeds the host's
+  entry to the provisioner. Mirrors `REDIS_HOST_EVENTS`.
+- Stream declaration is idempotent: an existing stream only gets its `subjects` updated, so manual
+  operator tuning of retention/storage survives a redeploy. Durables are created only when absent.
 
-## Delivery semantics (`infrastructure/configs/nats.config.ts`)
+## Delivery semantics
 
-Durable JetStream consumer per host (`<host>-nats-durable`, `deliverGroup`), `manualAck`, `ackWait` 30s, `maxDeliver` 10, `maxAckPending` 1. So delivery is **at-least-once with redelivery** — event handlers must be idempotent. `NATS_URL` configures the connection.
+One durable per (subject, consumerId): `ack_policy` explicit, `ack_wait` 30s, `max_deliver` 10,
+`max_ack_pending` 1. Delivery is **at-least-once with redelivery** — handlers must be idempotent.
+`NatsControllerInterceptor` acks on success and naks on failure; `NatsEventBusServer` naks whatever
+throws outside the interceptor's observable (a decode failure, say). After `max_deliver` the server
+stops redelivering and emits a `$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES` advisory — there is no
+DLQ set to inspect the way BullMQ's `failed` set is, so failures have to be caught in the logs.
 
-## Stream registry
+Because the log line is the only record, both of those places resolve the message through
+`resolveErrorMessage()` from `@backend/common` (fallback `NATS_ERROR_FALLBACK`): a wrapper error
+carries none of its own — a MikroORM `DriverException` over the `AggregateError` Node raises for a
+refused connection would otherwise log nothing readable.
 
-`globalStreamRegistry` (a module singleton) accumulates `stream → subjects` as `ControllerMethods()` / `@NatsEvent` run on class load; `forRoot` reads it to declare streams. `NatsStreamData = Pick<NatsStreamConfig, 'name' | 'subjects'>`.
+`max_ack_pending` — not any client-side buffer — is what bounds in-flight messages: the server
+withholds the next one until the current is acked. It is the equivalent of the Redis worker
+`concurrency`, overridable globally with `NATS_CONSUMER_CONCURRENCY` or per controller with
+`@NatsController({ concurrency })`.
+
+### Difference from the Redis adapter
+
+`deliver_policy` defaults to `all`, so a subscriber added later replays the stream from the
+beginning the first time its durable is created. The Redis mediator instead **drops** an event
+nobody was registered for yet. Set `NATS_DELIVER_POLICY=new` for the Redis behaviour.
+
+## Env
+
+`NATS_URL` (default `nats://localhost:4222`), `NATS_ACK_WAIT_MS` (30000), `NATS_MAX_DELIVER` (10),
+`NATS_CONSUMER_CONCURRENCY` (1), `NATS_DELIVER_POLICY` (`all` | `new`, default `all`).
 
 ## Commands & gotchas
 
 ```bash
 pnpm build            # format:generated → tsdown → dist (cjs + d.ts)
-pnpm dev / lint / format / format:generated / reset
+pnpm test             # jest; single file: pnpm test -- nats.consumer.constants
+pnpm dev / test:watch / lint / format / format:generated / reset
 ```
-- No `compile` here — `src/generated/` is regenerated by `pnpm compile:event-bus` (compiler in `@backend/event-bus`); change events in `EventBusStrategy`, never hand-edit `generated/`.
+
+- No `compile` here — `src/generated/` is regenerated by `pnpm compile:event-bus`; change events in
+  `EventBusStrategy`, never hand-edit `generated/`.
+- Specs sit next to their subject (`*.spec.ts` under `src/`), are excluded from the turbo `build`
+  inputs, and are not part of the tsdown entry graph — but they *are* in the tsconfig, so `tsc` and
+  `eslint` type-check them.
+- The unit suite covers the mechanism this adapter exists for: `@NatsController` rewriting patterns
+  and two controllers on one subject ending up with two distinct durables.
+- No service wires this package, so an end-to-end check is manual. Start a broker
+  (`docker run --rm -p 4222:4222 nats:latest -js`), point a scratch Nest app at
+  `NatsModule.forRoot({ host })` with two controllers carrying different `consumer` ids on the same
+  event, emit it, and confirm both handlers ran and `jsm.consumers.list('<stream>')` shows two
+  durables.
 - Handlers must be idempotent (redelivery up to 10×).
 - cjs-only; consumers resolve `dist/`, rebuild after changes.

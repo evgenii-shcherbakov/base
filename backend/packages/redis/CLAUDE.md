@@ -18,9 +18,10 @@ interfaces, `RedisClientFactory` and `REDIS_HOST_EVENTS`. Everything else (`infr
 
 ## Why it does not look like NATS
 
-JetStream is pub/sub: one subject, many durable consumers. BullMQ is a **work queue** — a job is
-delivered to exactly one worker — so a single event queue cannot feed several subscribers. Hence the
-three-stage topology:
+JetStream is pub/sub: one subject, many durable consumers, so `@backend/nats` scopes a subscription
+by putting the consumer id in the **durable name** and stops there. BullMQ is a **work queue** — a
+job is delivered to exactly one worker — so a single event queue cannot feed several subscribers,
+and the consumer id has to name a real queue. Hence the three-stage topology:
 
 ```
 emit  →  Queue('auth.user.create')                          the event queue (one owner: the host)

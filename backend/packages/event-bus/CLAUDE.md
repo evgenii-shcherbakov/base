@@ -9,8 +9,8 @@ This package is **both** the event-bus source of truth + compiler **and** one of
 ## Layer map (hexagon)
 
 This package owns the **domain + ports** side of the event-bus hexagon; the
-concrete adapters live in `@backend/nats` (live) and `@backend/redis` (implemented,
-not wired into any service yet):
+concrete adapters live in `@backend/redis` (live) and `@backend/nats` (dormant —
+generated and buildable, but wired into no service):
 
 - **strategy/** — domain: the `EventBusStrategy` contract + custom (non-proto)
   event payloads in `strategy/events/`. `EventBusStrategy` itself is compiler
@@ -34,6 +34,8 @@ Public API is the flat root `src/index.ts` barrel (`./generated` +
 2. Each adapter registered in `main.ts`'s `compile([...])` call (pug templates in `compiler/adapters/<name>/templates/`) writes transports/controllers into a **sibling package**: Nats → `@backend/nats/src/generated/index.ts`, Redis → `@backend/redis/src/generated/index.ts`.
 
 Adding an adapter means a `compiler/adapters/<name>/` folder (factory + `BaseAdapter` subclass + templates) and one entry in `compile([...])`. `BaseAdapter.onInit` creates its output file, so the target package does not need a committed `generated/` stub. Event ids are exposed raw (`method.eventId`, dot-cased `auth.user.create`) — each adapter decides how to shape them: Nats kebab-cases them into subjects, Redis uses them verbatim as queue names.
+
+Both adapters emit a third, host-keyed map alongside the transports and the client factory, for the part of their runtime that is owned by a host rather than by a subscriber: `REDIS_HOST_EVENTS` (host → event ids, read by the mediator) and `NATS_HOST_STREAMS` (host → the streams it owns, read by the stream provisioner). Both come from a `getHosts()` helper on the adapter and a `<name>.registry` template.
 
 Naming: `serviceId = dot-case(service)` — **host is dropped from class/interface names**, so generated bus/transport/controller names are `<Service>EventBus` / `Nats<Service>Transport` / etc., not `<Host><Service>…`. This means service names must be unique across all hosts in `EventBusStrategy`, or the compiler emits colliding class names. Subjects (`eventId = dot-case(host_service_event)` → kebab `host-service-event`, e.g. `auth-user-create`) and JetStream stream names (`host-service-stream`, e.g. `auth-user-stream`) both stay host-scoped — only the generated class/interface names dropped the host.
 

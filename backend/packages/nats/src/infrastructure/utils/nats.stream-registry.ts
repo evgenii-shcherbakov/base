@@ -1,4 +1,3 @@
-import { NatsStreamConfig } from '@nestjs-plugins/nestjs-nats-jetstream-transport';
 import _ from 'lodash';
 import { NatsStreamData } from '../types';
 
@@ -18,7 +17,7 @@ export class NatsStreamRegistry {
     });
   }
 
-  getStreams(): NatsStreamConfig[] {
+  getStreams(): NatsStreamData[] {
     return Array.from(this.streamMap.entries()).map(([name, subjects]) => {
       return {
         name,

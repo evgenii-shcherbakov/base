@@ -74,7 +74,7 @@ flowchart LR
 - **auth** is the reference hexagonal service (`domain` → `application` → `infrastructure` → `interface`); **storage** follows the same shape and consumes auth events over the event bus.
 - An event queue is fanned out by a mediator into one queue per subscriber, so several services can consume the same event despite BullMQ being a work queue.
 - Delivery is at-least-once (`attempts: 10`, exponential backoff) — event subscribers are idempotent.
-- The bus is broker-agnostic: the same `EventBusStrategy` also generates a NATS JetStream adapter (`@backend/nats`), currently dormant.
+- The bus is broker-agnostic: the same `EventBusStrategy` also generates a NATS JetStream adapter (`@backend/nats`), currently dormant. It scopes subscriptions by consumer id the same way, but needs no mediator — JetStream fans an event out to one durable consumer per subscriber on its own.
 
 ### Requirements
 

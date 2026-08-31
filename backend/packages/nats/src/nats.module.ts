@@ -1,21 +1,23 @@
 import { EventBus, EventBusHost } from '@backend/event-bus';
-import {
-  NatsJetStreamClientProxy,
-  NatsJetStreamServer,
-  NatsJetStreamTransport,
-} from '@nestjs-plugins/nestjs-nats-jetstream-transport';
 import { Abstract, DynamicModule, Provider, Type } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CustomStrategy } from '@nestjs/microservices';
-import { NatsClientFactory } from '@/generated';
+import { NATS_HOST_STREAMS, NatsClientFactory } from '@/generated';
 import {
+  globalConsumerRegistry,
   globalStreamRegistry,
   NatsConfig,
   natsConfig,
+  NatsConnectionService,
+  NatsJetStreamClient,
+  NatsStreamProvisionerService,
   NATS_CLIENT,
   NATS_CONFIG_SERVICE,
+  NATS_CONNECTION,
   NATS_MICROSERVICE_OPTIONS,
+  NATS_STREAM_PROVISIONER,
 } from '@/infrastructure';
+import { NatsEventBusServer } from '@/interface';
 
 type NatsModuleForRootParams = {
   host: EventBusHost;
@@ -35,7 +37,26 @@ export class NatsModule {
       },
       {
         provide: NATS_CLIENT,
-        useExisting: NatsJetStreamClientProxy,
+        inject: [NATS_CONNECTION],
+        useFactory: (connectionService: NatsConnectionService): NatsJetStreamClient => {
+          return new NatsJetStreamClient(connectionService);
+        },
+      },
+      {
+        // Owned streams are declared even in `onlyEmitting` mode — nobody else owns them.
+        // This is the slot the Redis mediator occupies; JetStream needs no fan-out stage.
+        provide: NATS_STREAM_PROVISIONER,
+        inject: [NATS_CONNECTION, NATS_CONFIG_SERVICE],
+        useFactory: (
+          connectionService: NatsConnectionService,
+          configService: ConfigService<NatsConfig>,
+        ): NatsStreamProvisionerService => {
+          return new NatsStreamProvisionerService({
+            connectionService,
+            streams: [...(NATS_HOST_STREAMS[params.host] ?? [])],
+            getStreamConfig: configService.getOrThrow('getStreamConfig', { infer: true }),
+          });
+        },
       },
     ];
 
@@ -44,15 +65,20 @@ export class NatsModule {
     if (!params.onlyEmitting) {
       providers.push({
         provide: NATS_MICROSERVICE_OPTIONS,
-        inject: [NATS_CONFIG_SERVICE],
-        useFactory: (configService: ConfigService<NatsConfig>): CustomStrategy => {
-          const options = configService.getOrThrow('getServerOptions', { infer: true })(
-            params.host,
-            globalStreamRegistry.getStreams(),
-          );
-
+        inject: [NATS_CONNECTION, NATS_STREAM_PROVISIONER, NATS_CONFIG_SERVICE],
+        useFactory: (
+          connectionService: NatsConnectionService,
+          provisioner: NatsStreamProvisionerService,
+          configService: ConfigService<NatsConfig>,
+        ): CustomStrategy => {
           return {
-            strategy: new NatsJetStreamServer(options),
+            strategy: new NatsEventBusServer({
+              connectionService,
+              provisioner,
+              registry: globalConsumerRegistry,
+              streams: globalStreamRegistry.getStreams(),
+              getConsumerConfig: configService.getOrThrow('getConsumerConfig', { infer: true }),
+            }),
           };
         },
       });
@@ -60,17 +86,22 @@ export class NatsModule {
       exports.push(NATS_MICROSERVICE_OPTIONS);
     }
 
+    // Registered last on purpose: Nest runs the shutdown hooks in provider order, so the
+    // shared connection is drained only after the consumers above are stopped.
+    providers.push({
+      provide: NATS_CONNECTION,
+      inject: [NATS_CONFIG_SERVICE],
+      useFactory: (configService: ConfigService<NatsConfig>): Promise<NatsConnectionService> => {
+        return NatsConnectionService.create(
+          configService.getOrThrow('getConnectionOptions', { infer: true })(params.host),
+        );
+      },
+    });
+
+    exports.push(NATS_CONNECTION);
+
     return {
-      imports: [
-        ConfigModule.forFeature(natsConfig),
-        NatsJetStreamTransport.registerAsync({
-          imports: [ConfigModule],
-          inject: [ConfigService],
-          useFactory: (configService: ConfigService<NatsConfig>) => {
-            return configService.getOrThrow('getClientOptions', { infer: true })(params.host);
-          },
-        }),
-      ],
+      imports: [ConfigModule.forFeature(natsConfig)],
       providers,
       exports,
       global: true,
@@ -85,7 +116,7 @@ export class NatsModule {
         {
           provide: params.EventBus,
           inject: [NATS_CLIENT],
-          useFactory: (client: NatsJetStreamClientProxy): Type => {
+          useFactory: (client: NatsJetStreamClient): Type => {
             return NatsClientFactory.create(client, params.EventBus);
           },
         },

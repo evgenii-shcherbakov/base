@@ -12,8 +12,15 @@ type NatsMessageContextArgs = [JsMsg, NatsConsumerSubscription];
  * the interceptor has to answer for every message.
  */
 export class NatsMessageContext extends BaseRpcContext<NatsMessageContextArgs> {
+  private answered = false;
+
   constructor(args: NatsMessageContextArgs) {
     super(args);
+  }
+
+  /** Whether this message already got its ack or nak — see `NatsEventBusServer.handleMessage`. */
+  isAnswered(): boolean {
+    return this.answered;
   }
 
   getMessage(): JsMsg {
@@ -41,10 +48,12 @@ export class NatsMessageContext extends BaseRpcContext<NatsMessageContextArgs> {
   }
 
   ack(): void {
+    this.answered = true;
     this.args[0].ack();
   }
 
   nak(delayMs?: number): void {
+    this.answered = true;
     this.args[0].nak(delayMs);
   }
 }

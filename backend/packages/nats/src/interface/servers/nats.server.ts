@@ -180,10 +180,17 @@ export class NatsEventBusServer extends Server implements CustomTransportStrateg
         await lastValueFrom(result, { defaultValue: undefined });
       }
     } catch (error) {
-      // The interceptor already logged and naked anything thrown inside its observable. This
-      // guards the rest: a handler that threw before the pipe was built, or a decode failure.
-      // Same reason as there for resolving the message: a wrapper error carries none of its own,
-      // and with no DLQ to inspect the log line is all that is left of the failure.
+      // The interceptor already logged the real error and naked the message. What arrives here is
+      // the same failure after Nest's `RpcExceptionsHandler` flattened it to a bare "Internal
+      // server error", so repeating it would add a log line that says strictly less than the one
+      // above it — and a second nak on top of an answered message.
+      if (context.isAnswered()) {
+        return;
+      }
+
+      // This guards the rest: a handler that threw before the pipe was built, or a decode failure.
+      // Same reason as in the interceptor for resolving the message — a wrapper error carries none
+      // of its own, and with no DLQ to inspect the log line is all that is left of the failure.
       this.logger.error(
         `Consumer "${subscription.durable}" failed on delivery ${message.info.deliveryCount}: ${resolveErrorMessage(error, NATS_ERROR_FALLBACK)}`,
       );

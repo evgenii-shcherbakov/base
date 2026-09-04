@@ -156,6 +156,12 @@ Because the log line is the only record, both of those places resolve the messag
 carries none of its own — a MikroORM `DriverException` over the `AggregateError` Node raises for a
 refused connection would otherwise log nothing readable.
 
+The two must not both answer for the same failure, which is what `NatsMessageContext.isAnswered()`
+is for. An error the interceptor already handled still surfaces in the server's `catch`, but by then
+Nest's `RpcExceptionsHandler` has replaced it with a bare `Internal server error` — logging that
+would bury the interceptor's accurate line under a useless one, and nak an already-naked message.
+So the server bails out on an answered context and only reports what nothing else saw.
+
 Payloads cross the bus as JSON (`JSON.stringify` on the way out, `msg.json()` on the way in), so a
 `Date` field arrives as an ISO **string** even though the proto type says `Date` —
 `NestAuth.User.createdAt` is the live example. This is a property of the bus, not of NATS: BullMQ

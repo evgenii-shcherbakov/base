@@ -1,5 +1,5 @@
+import { JsMsg } from '@nats-io/jetstream';
 import { BaseRpcContext } from '@nestjs/microservices';
-import { JsMsg } from 'nats';
 import { NatsConsumerSubscription } from '@/infrastructure';
 
 type NatsMessageContextArgs = [JsMsg, NatsConsumerSubscription];

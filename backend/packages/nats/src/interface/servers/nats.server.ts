@@ -1,7 +1,7 @@
 import { resolveErrorMessage } from '@backend/common';
+import { ConsumerConfig, ConsumerMessages, JsMsg } from '@nats-io/jetstream';
 import { Logger } from '@nestjs/common';
 import { CustomTransportStrategy, Server } from '@nestjs/microservices';
-import { ConsumerConfig, ConsumerMessages, JSONCodec, JsMsg } from 'nats';
 import { isObservable, lastValueFrom } from 'rxjs';
 import {
   isConsumerPattern,
@@ -35,7 +35,6 @@ export type NatsEventBusServerParams = {
  */
 export class NatsEventBusServer extends Server implements CustomTransportStrategy {
   protected readonly logger = new Logger(NatsEventBusServer.name);
-  private readonly codec = JSONCodec();
   private readonly consumers: ConsumerMessages[] = [];
 
   constructor(private readonly params: NatsEventBusServerParams) {
@@ -171,7 +170,9 @@ export class NatsEventBusServer extends Server implements CustomTransportStrateg
     const context = new NatsMessageContext([message, subscription]);
 
     try {
-      const result = await handler(this.codec.decode(message.data), context);
+      // `msg.json()` is what replaced `JSONCodec().decode()` in nats.js v3. It throws on a
+      // malformed payload just the same, and the catch below turns that into a nak.
+      const result = await handler(message.json(), context);
 
       // With interceptors in play the handler resolves to an observable — it has to be
       // subscribed to, otherwise the controller logic never runs and nothing acks.

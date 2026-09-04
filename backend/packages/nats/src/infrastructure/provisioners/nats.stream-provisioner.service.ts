@@ -1,5 +1,6 @@
+import { StreamConfig } from '@nats-io/jetstream';
+import { WithRequired } from '@nats-io/nats-core';
 import { Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { StreamConfig } from 'nats';
 import { NatsConnectionService } from '../connections';
 import { NatsStreamData } from '../types';
 
@@ -7,7 +8,7 @@ export type NatsStreamProvisionerParams = {
   /** Streams of the events this host owns — declared even when the host only emits. */
   streams: NatsStreamData[];
   connectionService: NatsConnectionService;
-  getStreamConfig: (stream: NatsStreamData) => Partial<StreamConfig>;
+  getStreamConfig: (stream: NatsStreamData) => WithRequired<Partial<StreamConfig>, 'name'>;
 };
 
 /**

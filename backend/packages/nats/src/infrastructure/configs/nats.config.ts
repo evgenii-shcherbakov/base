@@ -1,15 +1,15 @@
-import { validateEnv } from '@packages/common';
-import { kebabCase } from 'change-case-all';
 import {
   AckPolicy,
-  ConnectionOptions,
   ConsumerConfig,
   DeliverPolicy,
   RetentionPolicy,
   StorageType,
   StreamConfig,
-  nanos,
-} from 'nats';
+} from '@nats-io/jetstream';
+import { WithRequired, nanos } from '@nats-io/nats-core';
+import { NodeConnectionOptions } from '@nats-io/transport-node';
+import { validateEnv } from '@packages/common';
+import { kebabCase } from 'change-case-all';
 import zod from 'zod';
 import { NatsConsumerSubscription, NatsStreamData } from '../types';
 
@@ -28,7 +28,9 @@ export const natsConfig = () => {
   const natsUrl = env.NATS_URL;
 
   return {
-    getConnectionOptions: (host: string): ConnectionOptions => {
+    // `NodeConnectionOptions`, not the core `ConnectionOptions`: it is what the Node transport's
+    // `connect()` takes, and it narrows `tls` to the Node-specific shape.
+    getConnectionOptions: (host: string): NodeConnectionOptions => {
       const clientName = kebabCase(host);
 
       return {
@@ -36,7 +38,9 @@ export const natsConfig = () => {
         name: `${clientName}-nats-client`,
       };
     },
-    getStreamConfig: (stream: NatsStreamData): Partial<StreamConfig> => {
+    // `name` is required by `jsm.streams.add()`, so it is pinned in the type rather than left
+    // optional the way the rest of the partial config is.
+    getStreamConfig: (stream: NatsStreamData): WithRequired<Partial<StreamConfig>, 'name'> => {
       return {
         name: stream.name,
         subjects: stream.subjects,

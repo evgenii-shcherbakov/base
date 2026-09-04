@@ -1,11 +1,7 @@
+import { JetStreamClient, JetStreamManager, jetstream, jetstreamManager } from '@nats-io/jetstream';
+import { NatsConnection } from '@nats-io/nats-core';
+import { NodeConnectionOptions, connect } from '@nats-io/transport-node';
 import { Logger, OnApplicationShutdown } from '@nestjs/common';
-import {
-  ConnectionOptions,
-  JetStreamClient,
-  JetStreamManager,
-  NatsConnection,
-  connect,
-} from 'nats';
 
 /**
  * Owns the single shared NATS connection, the way `RedisConnectionService` owns the ioredis
@@ -14,13 +10,20 @@ import {
  *
  * `connect()` is async, so the connection is established by the static `create()` and handed
  * to the module through an async factory.
+ *
+ * nats.js v3 dropped `NatsConnection#jetstream()` / `#jetstreamManager()` in favour of the
+ * `jetstream(nc)` / `jetstreamManager(nc)` functions from `@nats-io/jetstream`.
  */
 export class NatsConnectionService implements OnApplicationShutdown {
   private readonly logger = new Logger(NatsConnectionService.name);
+  private readonly jetStream: JetStreamClient;
+  private jetStreamManager?: Promise<JetStreamManager>;
 
-  private constructor(private readonly connection: NatsConnection) {}
+  private constructor(private readonly connection: NatsConnection) {
+    this.jetStream = jetstream(connection);
+  }
 
-  static async create(options: ConnectionOptions): Promise<NatsConnectionService> {
+  static async create(options: NodeConnectionOptions): Promise<NatsConnectionService> {
     return new NatsConnectionService(await connect(options));
   }
 
@@ -29,11 +32,15 @@ export class NatsConnectionService implements OnApplicationShutdown {
   }
 
   getJetStream(): JetStreamClient {
-    return this.connection.jetstream();
+    return this.jetStream;
   }
 
+  // Memoized: building the manager round-trips to the server to check the JetStream API, and
+  // the server strategy asks for one per subscription it creates.
   getJetStreamManager(): Promise<JetStreamManager> {
-    return this.connection.jetstreamManager();
+    this.jetStreamManager ??= jetstreamManager(this.connection);
+
+    return this.jetStreamManager;
   }
 
   // Registered last in the module so its hook runs after the consumers are stopped. `drain()`

@@ -68,12 +68,35 @@ provider that runs even in `onlyEmitting` mode) is taken by `NatsStreamProvision
 
 `@nestjs-plugins/nestjs-nats-jetstream-transport` takes the Nest pattern as the subject and builds
 one consumer config per host, so it cannot express a per-controller durable. The package now sits
-directly on `nats@2.29.3` and owns its connection, client and server, mirroring the
+directly on the nats.js client and owns its connection, client and server, mirroring the
 connection → client → server layout of `@backend/redis`.
 
-`nats@2.29.3` is marked deprecated in favour of `@nats-io/transport-node` (nats.js v3). Staying on
-2.x is deliberate: the consumer API used here (`jsm.consumers.add` + `js.consumers.get().consume()`)
-is present, and a v3 migration is its own task.
+## The client — nats.js v3
+
+nats.js v3 split the monolithic `nats` package (deprecated) into scoped ones, so three are declared
+instead of one:
+
+- **`@nats-io/transport-node`** — `connect()` and `NodeConnectionOptions` (what `connect` actually
+  takes; it narrows `tls` to the Node shape, so `natsConfig.getConnectionOptions` returns it rather
+  than the core `ConnectionOptions`).
+- **`@nats-io/jetstream`** — everything JetStream: the `jetstream(nc)` / `jetstreamManager(nc)`
+  functions, `JsMsg`, `ConsumerMessages`, `PubAck`, the config types and the policy enums.
+- **`@nats-io/nats-core`** — `nanos()`, `NatsConnection`, `WithRequired`. Declared explicitly even
+  though `@nats-io/transport-node` re-exports it, because that re-export goes through the
+  `@nats-io/nats-core/internal` subpath.
+
+Two v3 changes shaped the code:
+
+- **`NatsConnection#jetstream()` / `#jetstreamManager()` are gone** — `NatsConnectionService` builds
+  both through the module-level functions instead and memoizes them (creating the manager
+  round-trips to the server, and the strategy asks for one per subscription).
+- **`JSONCodec` is gone** — `NatsJetStreamClient.emit` publishes `JSON.stringify(event)` (a
+  `Payload` may be a string, which the client encodes as UTF-8 itself, so the wire bytes are
+  unchanged) and the server decodes with `msg.json()`, which throws on a malformed payload exactly
+  where the codec used to, and the catch turns that into a nak.
+
+`jsm.streams.add()` also tightened its signature to require `name`, which is why
+`getStreamConfig` returns `WithRequired<Partial<StreamConfig>, 'name'>`.
 
 ## Layer map (hexagon)
 

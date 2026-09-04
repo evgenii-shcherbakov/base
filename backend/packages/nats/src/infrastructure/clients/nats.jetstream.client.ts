@@ -1,4 +1,4 @@
-import { JSONCodec, JetStreamClient, PubAck } from 'nats';
+import { JetStreamClient, PubAck } from '@nats-io/jetstream';
 import { NatsConnectionService } from '../connections';
 
 /**
@@ -9,15 +9,16 @@ import { NatsConnectionService } from '../connections';
  * promise-based like the Redis one instead of RxJS-based.
  */
 export class NatsJetStreamClient {
-  private readonly codec = JSONCodec();
   private readonly jetStream: JetStreamClient;
 
   constructor(connectionService: NatsConnectionService) {
     this.jetStream = connectionService.getJetStream();
   }
 
+  // nats.js v3 removed `JSONCodec`. A `Payload` may be a string, which the client encodes as
+  // UTF-8 itself, so the bytes on the wire are the same the codec used to produce.
   emit<Event>(subject: string, event: Event): Promise<PubAck> {
-    return this.jetStream.publish(subject, this.codec.encode(event));
+    return this.jetStream.publish(subject, JSON.stringify(event));
   }
 
   emitMany<Event>(subject: string, events: Event[]): Promise<PubAck[]> {

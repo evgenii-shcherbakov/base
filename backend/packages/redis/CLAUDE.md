@@ -101,6 +101,11 @@ marks the job failed and BullMQ schedules the retry, so **handlers must be idemp
 Worker `concurrency` defaults to 1 (the NATS `maxAckPending: 1` equivalent) — override globally with
 `REDIS_WORKER_CONCURRENCY` or per controller with `@RedisController({ concurrency })`.
 
+Payloads cross the bus as JSON — BullMQ serializes job data — so a `Date` field arrives as an ISO
+**string** even though the proto type says `Date` (`NestAuth.User.createdAt` is the live example).
+`@backend/nats` behaves identically, where the e2e suite pins it down. Treat a timestamp in an event
+payload as a string, and parse it if you need a `Date`.
+
 ### Keeping `failedReason` readable
 
 The `failed` set is the DLQ, so a job sitting there has to say why on its own — correlating its

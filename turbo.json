@@ -17,9 +17,12 @@
     },
     "prod": {},
     "test": {
-      // The task is cached, so `env` has to name every variable a suite reads — envMode is
-      // loose, which hashes nothing on its own, while the config modules validate env at
-      // import time and the config specs assert its defaults. NODE_ENV/PORT come from
+      // Not cached: the whole run takes seconds, so a replay saves nothing worth the
+      // question "did these tests actually run against this environment?".
+      "cache": false,
+      // Inert while `cache` is false, and kept ready for the day it is not. envMode is
+      // loose, so nothing enters the hash on its own, while the config modules validate env
+      // at import time and the config specs assert its defaults. NODE_ENV/PORT come from
       // `NodeValidationSchema`, which every suite pulls in through @backend/common; the
       // prefixes cover the two transport packages. Keep the list here rather than in a
       // package turbo.json: a package-level task replaces this field instead of extending

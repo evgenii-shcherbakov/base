@@ -1,5 +1,5 @@
 import { PgModule } from '@backend/pg';
-import { RedisModule, RedisStorageObjectTransport } from '@backend/redis';
+import { RedisModule, RedisStorageObjectTransport } from '@backend/event-bus-redis';
 import { PgStorageObjectEntity } from '@common/infrastructure/pg/entities/pg.storage-object.entity';
 import { StorageModule } from '@modules/storage/storage.module';
 import { Module } from '@nestjs/common';

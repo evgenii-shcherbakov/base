@@ -1,10 +1,10 @@
-# CLAUDE.md — @backend/nats
+# CLAUDE.md — @backend/event-bus-nats
 
-Guidance for working inside `backend/packages/nats`. The event-bus codegen flow and the abstract
+Guidance for working inside `backend/packages/event-bus-nats`. The event-bus codegen flow and the abstract
 ports are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file
 is the package internals: the NATS JetStream runtime.
 
-**Status: dormant.** `auth`/`storage` run on `@backend/redis`, so no service imports this package
+**Status: dormant.** `auth`/`storage` run on `@backend/event-bus-redis`, so no service imports this package
 and `docker-compose.yml` starts no `nats` container. It stays generated, built and unit-tested as
 the alternative broker — keep it working when changing the event bus.
 
@@ -17,7 +17,7 @@ interfaces, `NatsClientFactory` and `NATS_HOST_STREAMS`. Everything else (`infra
 
 ## Consumer-scoped subscriptions
 
-The adapter is shaped like `@backend/redis`: a controller declares its system-wide id once, and
+The adapter is shaped like `@backend/event-bus-redis`: a controller declares its system-wide id once, and
 every subscription is scoped by it.
 
 ```ts
@@ -57,7 +57,7 @@ that load-balances instead of fanning out. That was the behaviour of the old
 
 ### Why there is no mediator
 
-`@backend/redis` needs `RedisMediatorService` + `RedisSubscriptionRegistry` because BullMQ is a
+`@backend/event-bus-redis` needs `RedisMediatorService` + `RedisSubscriptionRegistry` because BullMQ is a
 work queue: a job goes to exactly one worker, so fan-out has to be re-published by hand. JetStream
 delivers a copy to **every** durable consumer of a subject, so the fan-out stage and the
 distributed subscriber registry have no counterpart here — one durable per (subject, consumerId)
@@ -69,7 +69,7 @@ provider that runs even in `onlyEmitting` mode) is taken by `NatsStreamProvision
 `@nestjs-plugins/nestjs-nats-jetstream-transport` takes the Nest pattern as the subject and builds
 one consumer config per host, so it cannot express a per-controller durable. The package now sits
 directly on the nats.js client and owns its connection, client and server, mirroring the
-connection → client → server layout of `@backend/redis`.
+connection → client → server layout of `@backend/event-bus-redis`.
 
 ## The client — nats.js v3
 
@@ -165,7 +165,7 @@ So the server bails out on an answered context and only reports what nothing els
 Payloads cross the bus as JSON (`JSON.stringify` on the way out, `msg.json()` on the way in), so a
 `Date` field arrives as an ISO **string** even though the proto type says `Date` —
 `NestAuth.User.createdAt` is the live example. This is a property of the bus, not of NATS: BullMQ
-serializes job data the same way in `@backend/redis`. Treat a timestamp in an event payload as a
+serializes job data the same way in `@backend/event-bus-redis`. Treat a timestamp in an event payload as a
 string, and parse it if you need a `Date`.
 
 `max_ack_pending` — not any client-side buffer — is what bounds in-flight messages: the server

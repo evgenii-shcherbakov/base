@@ -1,11 +1,11 @@
-# CLAUDE.md — @backend/redis
+# CLAUDE.md — @backend/event-bus-redis
 
-Guidance for working inside `backend/packages/redis`. The event-bus codegen flow and the abstract
+Guidance for working inside `backend/packages/event-bus-redis`. The event-bus codegen flow and the abstract
 ports are in the root `CLAUDE.md` *Event-bus codegen pipeline* section — read it first. This file is
 the package internals: the Redis/BullMQ runtime.
 
 **Status: the live transport.** `backend.auth` and `backend.storage` run on it (`RedisModule.forRoot`
-+ `REDIS_MICROSERVICE_OPTIONS`, subscribers under `interface/redis/`); `@backend/nats` is dormant.
++ `REDIS_MICROSERVICE_OPTIONS`, subscribers under `interface/redis/`); `@backend/event-bus-nats` is dormant.
 `docker-compose.yml` runs a `redis` service in the `local`/`all` profiles and passes `REDIS_URL` to
 both services. `backend.api-gateway` uses no event bus at all.
 
@@ -18,7 +18,7 @@ interfaces, `RedisClientFactory` and `REDIS_HOST_EVENTS`. Everything else (`infr
 
 ## Why it does not look like NATS
 
-JetStream is pub/sub: one subject, many durable consumers, so `@backend/nats` scopes a subscription
+JetStream is pub/sub: one subject, many durable consumers, so `@backend/event-bus-nats` scopes a subscription
 by putting the consumer id in the **durable name** and stops there. BullMQ is a **work queue** — a
 job is delivered to exactly one worker — so a single event queue cannot feed several subscribers,
 and the consumer id has to name a real queue. Hence the three-stage topology:
@@ -113,7 +113,7 @@ Worker `concurrency` defaults to 1 (the NATS `maxAckPending: 1` equivalent) — 
 
 Payloads cross the bus as JSON — BullMQ serializes job data — so a `Date` field arrives as an ISO
 **string** even though the proto type says `Date` (`NestAuth.User.createdAt` is the live example).
-`@backend/nats` behaves identically, where the e2e suite pins it down. Treat a timestamp in an event
+`@backend/event-bus-nats` behaves identically, where the e2e suite pins it down. Treat a timestamp in an event
 payload as a string, and parse it if you need a `Date`.
 
 ### Keeping `failedReason` readable
@@ -136,7 +136,7 @@ message in the `cause` chain, descending into an `AggregateError`'s `errors`, an
 error's class name (`DriverException`) before the caller's default (`REDIS_ERROR_FALLBACK`). Both the
 interceptor and `RedisEventBusServer.toError` use it — the latter still guards handlers that throw
 outside the interceptor's observable. It lives in `@backend/common` rather than here because
-`@backend/nats` needs it for the same reason (no DLQ there at all — the log line is the only record).
+`@backend/event-bus-nats` needs it for the same reason (no DLQ there at all — the log line is the only record).
 
 ## Registries
 

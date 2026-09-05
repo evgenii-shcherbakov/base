@@ -7,7 +7,7 @@ import {
   RedisStorageObjectTransport,
   RedisUserCreateEventHandler,
   RedisUserTransport,
-} from '@backend/redis';
+} from '@backend/event-bus-redis';
 import { StorageObjectCreateRootFolderUseCase } from '@modules/storage-object/application/use-cases/storage-object.create-root-folder.use-case';
 import { StorageObjectUpdateFolderChildrenUseCase } from '@modules/storage-object/application/use-cases/storage-object.update-folder-children.use-case';
 

@@ -1,5 +1,5 @@
 import { GRPC_MICROSERVICE_OPTIONS } from '@backend/grpc';
-import { REDIS_MICROSERVICE_OPTIONS } from '@backend/redis';
+import { REDIS_MICROSERVICE_OPTIONS } from '@backend/event-bus-redis';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 

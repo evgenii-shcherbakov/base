@@ -48,8 +48,8 @@ flowchart LR
 
   E -->|pnpm compile:event-bus| EC{{event-bus compiler}}
   EC --> EB["@backend/event-bus<br/>(abstract buses)"]
-  EC --> RA["@backend/redis<br/>(Redis*Transport — live)"]
-  EC --> NA["@backend/nats<br/>(Nats*Transport — dormant)"]
+  EC --> RA["@backend/event-bus-redis<br/>(Redis*Transport — live)"]
+  EC --> NA["@backend/event-bus-nats<br/>(Nats*Transport — dormant)"]
 ```
 
 **Runtime topology** — gRPC for request/response, Redis/BullMQ for domain events:
@@ -74,7 +74,7 @@ flowchart LR
 - **auth** is the reference hexagonal service (`domain` → `application` → `infrastructure` → `interface`); **storage** follows the same shape and consumes auth events over the event bus.
 - An event queue is fanned out by a mediator into one queue per subscriber, so several services can consume the same event despite BullMQ being a work queue.
 - Delivery is at-least-once (`attempts: 10`, exponential backoff) — event subscribers are idempotent.
-- The bus is broker-agnostic: the same `EventBusStrategy` also generates a NATS JetStream adapter (`@backend/nats`), currently dormant. It scopes subscriptions by consumer id the same way, but needs no mediator — JetStream fans an event out to one durable consumer per subscriber on its own.
+- The bus is broker-agnostic: the same `EventBusStrategy` also generates a NATS JetStream adapter (`@backend/event-bus-nats`), currently dormant. It scopes subscriptions by consumer id the same way, but needs no mediator — JetStream fans an event out to one durable consumer per subscriber on its own.
 
 ### Requirements
 

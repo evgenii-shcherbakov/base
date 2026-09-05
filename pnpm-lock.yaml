@@ -163,7 +163,7 @@ importers:
         version: 7.2.2
       ts-jest:
         specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
       ts-loader:
         specifier: 9.5.7
         version: 9.5.7(typescript@5.9.3)(webpack@5.106.2)
@@ -182,6 +182,9 @@ importers:
       '@backend/event-bus':
         specifier: workspace:*
         version: link:../../packages/event-bus
+      '@backend/event-bus-redis':
+        specifier: workspace:*
+        version: link:../../packages/event-bus-redis
       '@backend/grpc':
         specifier: workspace:*
         version: link:../../packages/grpc
@@ -191,9 +194,6 @@ importers:
       '@backend/proto':
         specifier: workspace:*
         version: link:../../packages/proto
-      '@backend/redis':
-        specifier: workspace:*
-        version: link:../../packages/redis
       '@grpc/grpc-js':
         specifier: 1.14.4
         version: 1.14.4
@@ -299,7 +299,7 @@ importers:
         version: 7.2.2
       ts-jest:
         specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
       ts-loader:
         specifier: 9.5.7
         version: 9.5.7(typescript@5.9.3)(webpack@5.106.2)
@@ -318,6 +318,9 @@ importers:
       '@backend/event-bus':
         specifier: workspace:*
         version: link:../../packages/event-bus
+      '@backend/event-bus-redis':
+        specifier: workspace:*
+        version: link:../../packages/event-bus-redis
       '@backend/grpc':
         specifier: workspace:*
         version: link:../../packages/grpc
@@ -327,9 +330,6 @@ importers:
       '@backend/proto':
         specifier: workspace:*
         version: link:../../packages/proto
-      '@backend/redis':
-        specifier: workspace:*
-        version: link:../../packages/redis
       '@grpc/grpc-js':
         specifier: 1.14.4
         version: 1.14.4
@@ -423,7 +423,7 @@ importers:
         version: 7.2.2
       ts-jest:
         specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
       ts-loader:
         specifier: 9.5.7
         version: 9.5.7(typescript@5.9.3)(webpack@5.106.2)
@@ -475,7 +475,7 @@ importers:
         version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
       ts-jest:
         specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
 
   backend/packages/event-bus:
     dependencies:
@@ -507,6 +507,137 @@ importers:
       tsx:
         specifier: 4.22.4
         version: 4.22.4
+
+  backend/packages/event-bus-nats:
+    dependencies:
+      '@backend/common':
+        specifier: workspace:*
+        version: link:../common
+      '@backend/event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
+      '@backend/proto':
+        specifier: workspace:*
+        version: link:../proto
+      '@nats-io/jetstream':
+        specifier: 3.4.0
+        version: 3.4.0
+      '@nats-io/nats-core':
+        specifier: 3.4.0
+        version: 3.4.0
+      '@nats-io/transport-node':
+        specifier: 3.4.0
+        version: 3.4.0
+      '@nestjs/common':
+        specifier: 11.1.27
+        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/config':
+        specifier: 4.0.4
+        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@nestjs/microservices':
+        specifier: 11.1.27
+        version: 11.1.27(@grpc/grpc-js@1.14.4)(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(ioredis@5.11.1)(nats@2.29.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@packages/common':
+        specifier: workspace:*
+        version: link:../../../packages/common
+      change-case-all:
+        specifier: 2.1.0
+        version: 2.1.0
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: 7.8.2
+        version: 7.8.2
+    devDependencies:
+      '@nestjs/core':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
+      '@nestjs/testing':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)
+      '@packages/configs':
+        specifier: workspace:*
+        version: link:../../../packages/configs
+      '@types/jest':
+        specifier: 30.0.0
+        version: 30.0.0
+      '@types/lodash':
+        specifier: 4.17.23
+        version: 4.17.23
+      jest:
+        specifier: 30.3.0
+        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
+      ts-jest:
+        specifier: 29.4.9
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
+
+  backend/packages/event-bus-redis:
+    dependencies:
+      '@backend/common':
+        specifier: workspace:*
+        version: link:../common
+      '@backend/event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
+      '@backend/proto':
+        specifier: workspace:*
+        version: link:../proto
+      '@nestjs/common':
+        specifier: 11.1.27
+        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/config':
+        specifier: 4.0.4
+        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@nestjs/microservices':
+        specifier: 11.1.27
+        version: 11.1.27(@grpc/grpc-js@1.14.4)(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(ioredis@5.11.1)(nats@2.29.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@packages/common':
+        specifier: workspace:*
+        version: link:../../../packages/common
+      bullmq:
+        specifier: 6.1.2
+        version: 6.1.2(ioredis@5.11.1)(pg@8.20.0)
+      change-case-all:
+        specifier: 2.1.0
+        version: 2.1.0
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: 7.8.2
+        version: 7.8.2
+    devDependencies:
+      '@nestjs/core':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
+      '@nestjs/testing':
+        specifier: 11.1.27
+        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)
+      '@packages/configs':
+        specifier: workspace:*
+        version: link:../../../packages/configs
+      '@types/jest':
+        specifier: 30.0.0
+        version: 30.0.0
+      jest:
+        specifier: 30.3.0
+        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
+      ts-jest:
+        specifier: 29.4.9
+        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3)
 
   backend/packages/grpc:
     dependencies:
@@ -603,76 +734,6 @@ importers:
         specifier: 4.17.23
         version: 4.17.23
 
-  backend/packages/nats:
-    dependencies:
-      '@backend/common':
-        specifier: workspace:*
-        version: link:../common
-      '@backend/event-bus':
-        specifier: workspace:*
-        version: link:../event-bus
-      '@backend/proto':
-        specifier: workspace:*
-        version: link:../proto
-      '@nats-io/jetstream':
-        specifier: 3.4.0
-        version: 3.4.0
-      '@nats-io/nats-core':
-        specifier: 3.4.0
-        version: 3.4.0
-      '@nats-io/transport-node':
-        specifier: 3.4.0
-        version: 3.4.0
-      '@nestjs/common':
-        specifier: 11.1.27
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: 4.0.4
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/microservices':
-        specifier: 11.1.27
-        version: 11.1.27(@grpc/grpc-js@1.14.4)(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(ioredis@5.11.1)(nats@2.29.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@packages/common':
-        specifier: workspace:*
-        version: link:../../../packages/common
-      change-case-all:
-        specifier: 2.1.0
-        version: 2.1.0
-      lodash:
-        specifier: 4.18.1
-        version: 4.18.1
-      reflect-metadata:
-        specifier: 0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: 7.8.2
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/core':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
-      '@nestjs/testing':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)
-      '@packages/configs':
-        specifier: workspace:*
-        version: link:../../../packages/configs
-      '@types/jest':
-        specifier: 30.0.0
-        version: 30.0.0
-      '@types/lodash':
-        specifier: 4.17.23
-        version: 4.17.23
-      jest:
-        specifier: 30.3.0
-        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
-      ts-jest:
-        specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
-
   backend/packages/pg:
     dependencies:
       '@backend/common':
@@ -758,67 +819,6 @@ importers:
       '@packages/configs':
         specifier: workspace:*
         version: link:../../../packages/configs
-
-  backend/packages/redis:
-    dependencies:
-      '@backend/common':
-        specifier: workspace:*
-        version: link:../common
-      '@backend/event-bus':
-        specifier: workspace:*
-        version: link:../event-bus
-      '@backend/proto':
-        specifier: workspace:*
-        version: link:../proto
-      '@nestjs/common':
-        specifier: 11.1.27
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: 4.0.4
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/microservices':
-        specifier: 11.1.27
-        version: 11.1.27(@grpc/grpc-js@1.14.4)(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(ioredis@5.11.1)(nats@2.29.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@packages/common':
-        specifier: workspace:*
-        version: link:../../../packages/common
-      bullmq:
-        specifier: 6.1.2
-        version: 6.1.2(ioredis@5.11.1)(pg@8.20.0)
-      change-case-all:
-        specifier: 2.1.0
-        version: 2.1.0
-      ioredis:
-        specifier: 5.11.1
-        version: 5.11.1
-      reflect-metadata:
-        specifier: 0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: 7.8.2
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/core':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
-      '@nestjs/testing':
-        specifier: 11.1.27
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)(@nestjs/microservices@11.1.27)(@nestjs/platform-express@11.1.27)
-      '@packages/configs':
-        specifier: workspace:*
-        version: link:../../../packages/configs
-      '@types/jest':
-        specifier: 30.0.0
-        version: 30.0.0
-      jest:
-        specifier: 30.3.0
-        version: 30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3))
-      ts-jest:
-        specifier: 29.4.9
-        version: 29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3)
 
   frontend/apps/admin:
     dependencies:
@@ -10976,7 +10976,7 @@ snapshots:
       json-schema-typed: 7.0.3
       onetime: 5.1.2
       pkg-up: 3.1.0
-      semver: 7.5.2
+      semver: 7.8.5
 
   constantinople@4.0.1:
     dependencies:
@@ -14680,7 +14680,7 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  ts-jest@29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.19.17)(typescript@5.9.3)))(typescript@5.9.3):
+  ts-jest@29.4.9(@babel/core@7.29.7)(@jest/transform@30.3.0)(@jest/types@30.4.1)(babel-jest@30.3.0(@babel/core@7.29.7))(jest-util@30.4.1)(jest@30.3.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0))(typescript@5.9.3):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0

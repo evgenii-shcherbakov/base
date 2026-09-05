@@ -1,7 +1,7 @@
 import { EventBusHost } from '@backend/event-bus';
 import { GrpcModule } from '@backend/grpc';
 import { PgModule } from '@backend/pg';
-import { RedisModule } from '@backend/redis';
+import { RedisModule } from '@backend/event-bus-redis';
 import { AuthModule } from '@modules/auth/auth.module';
 import { TempCodeModule } from '@modules/temp-code/temp-code.module';
 import { UserModule } from '@modules/user/user.module';

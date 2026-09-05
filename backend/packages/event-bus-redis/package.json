@@ -1,5 +1,5 @@
 {
-  "name": "@backend/redis",
+  "name": "@backend/event-bus-redis",
   "private": true,
   "author": "Yauheni Shcharbakou <iipekolict@gmail.com>",
   "license": "MIT",

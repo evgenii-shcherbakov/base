@@ -7,12 +7,12 @@ export type NatsStreamData = {
 /**
  * One controller method bound to one event. The pair drives both the JetStream durable
  * consumer the subscriber reads from and the Nest pattern the handler is registered under,
- * mirroring `RedisQueueSubscription` in `@backend/redis`.
+ * mirroring `RedisQueueSubscription` in `@backend/event-bus-redis`.
  */
 export type NatsConsumerSubscription = {
   /**
    * The kebab-cased event id — the real NATS subject, e.g. `auth-user-create`. This is the
-   * event's identity on the wire here, the way the dot-cased queue name is in `@backend/redis`.
+   * event's identity on the wire here, the way the dot-cased queue name is in `@backend/event-bus-redis`.
    */
   subject: string;
   consumerId: string;

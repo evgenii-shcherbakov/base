@@ -4,7 +4,7 @@ Guidance for working inside `backend/apps/api-gateway`. The general hexagonal/us
 
 ## What this service is
 
-The edge service — the only HTTP-facing backend. `main.ts` serves **REST + Swagger UI at `/`** (global `ValidationPipe`, `RpcExceptionFilter` + `HttpExceptionFilter`) and **also runs as a gRPC server** (`GrpcModule.forRoot({ host: 'apiGateway' })` — the admin frontend calls it over gRPC). `ThrottlerModule` rate-limits (100 / 60s). It owns **no database and no event bus** (no `@backend/redis` / `@backend/event-bus` dependency); it only proxies inbound REST/gRPC calls to the internal `auth` / `storage` gRPC services. Bootstrap connects a single microservice — `GRPC_MICROSERVICE_OPTIONS` from `@backend/grpc`.
+The edge service — the only HTTP-facing backend. `main.ts` serves **REST + Swagger UI at `/`** (global `ValidationPipe`, `RpcExceptionFilter` + `HttpExceptionFilter`) and **also runs as a gRPC server** (`GrpcModule.forRoot({ host: 'apiGateway' })` — the admin frontend calls it over gRPC). `ThrottlerModule` rate-limits (100 / 60s). It owns **no database and no event bus** (no `@backend/event-bus-redis` / `@backend/event-bus` dependency); it only proxies inbound REST/gRPC calls to the internal `auth` / `storage` gRPC services. Bootstrap connects a single microservice — `GRPC_MICROSERVICE_OPTIONS` from `@backend/grpc`.
 
 ## Layers (two, by design)
 

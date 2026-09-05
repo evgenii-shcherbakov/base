@@ -1,5 +1,5 @@
 import { PgModule } from '@backend/pg';
-import { RedisModule, RedisVideoTransport } from '@backend/redis';
+import { RedisModule, RedisVideoTransport } from '@backend/event-bus-redis';
 import { PgVideoEntity } from '@common/infrastructure/pg/entities/pg.video.entity';
 import { FileModule } from '@modules/file/file.module';
 import { StorageObjectModule } from '@modules/storage-object/storage-object.module';

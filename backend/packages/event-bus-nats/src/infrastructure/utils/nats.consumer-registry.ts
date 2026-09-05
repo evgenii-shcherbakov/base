@@ -3,7 +3,7 @@ import { NatsConsumerSubscription } from '../types';
 /**
  * Accumulates `event -> controller` subscriptions as `@NatsController()` runs on class load,
  * the same way `globalStreamRegistry` accumulates JetStream streams and
- * `globalQueueRegistry` accumulates queues in `@backend/redis`.
+ * `globalQueueRegistry` accumulates queues in `@backend/event-bus-redis`.
  *
  * The server strategy reads it at `listen()` to create one durable consumer per entry.
  */

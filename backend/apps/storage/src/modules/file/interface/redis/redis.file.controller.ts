@@ -5,7 +5,7 @@ import {
   RedisVideoTransport,
   RedisVideoUploadFailEventHandler,
   RedisVideoUploadFinishEventHandler,
-} from '@backend/redis';
+} from '@backend/event-bus-redis';
 import { FileUpdateUseCase } from '@modules/file/application/use-cases/file.update.use-case';
 
 @RedisController({ consumer: 'storage.file' })

@@ -1,5 +1,5 @@
 import { PgModule } from '@backend/pg';
-import { RedisModule, RedisUserTransport } from '@backend/redis';
+import { RedisModule, RedisUserTransport } from '@backend/event-bus-redis';
 import { CryptoModule } from '@modules/crypto/crypto.module';
 import { Module } from '@nestjs/common';
 import { UserCreateOneUseCase } from './application/use-cases/user.create-one.use-case';

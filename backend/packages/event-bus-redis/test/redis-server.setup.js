@@ -6,7 +6,7 @@ const PROBE_TIMEOUT_MS = 2000;
 /**
  * Asks the server for a `PING` over a raw socket rather than through ioredis.
  *
- * A client would be the obvious choice — `@backend/nats` probes its broker with one — but a
+ * A client would be the obvious choice — `@backend/event-bus-nats` probes its broker with one — but a
  * failed ioredis connection leaves reconnect machinery behind that keeps jest from exiting on
  * the skip path, which is exactly the path that has to stay quiet. A socket destroys cleanly.
  *
@@ -57,7 +57,7 @@ module.exports = async () => {
   process.env.REDIS_E2E_SERVER = '0';
 
   console.warn(
-    `\nNo Redis at ${REDIS_URL} — skipping the @backend/redis e2e suite.\n` +
+    `\nNo Redis at ${REDIS_URL} — skipping the @backend/event-bus-redis e2e suite.\n` +
       'Start one with: docker run --rm -p 6379:6379 redis:latest\n',
   );
 };

@@ -4,6 +4,6 @@ import { join } from 'path';
 
 export const Nats = NatsAdapter.createFactory({
   name: 'nats',
-  outputPath: join(BACKEND_PACKAGES_DIR_ROOT, 'nats', 'src', 'generated', 'index.ts'),
+  outputPath: join(BACKEND_PACKAGES_DIR_ROOT, 'event-bus-nats', 'src', 'generated', 'index.ts'),
   templatePath: join(__dirname, 'templates'),
 });

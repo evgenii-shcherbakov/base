@@ -164,7 +164,7 @@ describeWithBroker('NATS transport (live broker)', () => {
   });
 
   it('delivers the payload as JSON, so a Date arrives as an ISO string', () => {
-    // The bus is JSON end to end, here and in `@backend/redis`. `NestAuth.User.createdAt` is
+    // The bus is JSON end to end, here and in `@backend/event-bus-redis`. `NestAuth.User.createdAt` is
     // typed `Date`, but what a subscriber actually receives is the serialized form.
     expect(recorder.file[0].event).toEqual(JSON.parse(JSON.stringify(user)));
     expect(recorder.file[0].event.createdAt).toBe('2026-01-01T00:00:00.000Z');

@@ -25,7 +25,7 @@ module.exports = async () => {
     process.env.NATS_E2E_BROKER = '0';
 
     console.warn(
-      `\nNo NATS broker at ${NATS_URL} — skipping the @backend/nats e2e suite.\n` +
+      `\nNo NATS broker at ${NATS_URL} — skipping the @backend/event-bus-nats e2e suite.\n` +
         'Start one with: docker run --rm -p 4222:4222 nats:latest -js\n',
     );
   }

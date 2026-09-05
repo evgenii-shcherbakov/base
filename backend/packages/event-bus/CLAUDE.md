@@ -9,7 +9,7 @@ This package is **both** the event-bus source of truth + compiler **and** one of
 ## Layer map (hexagon)
 
 This package owns the **domain + ports** side of the event-bus hexagon; the
-concrete adapters live in `@backend/redis` (live) and `@backend/nats` (dormant —
+concrete adapters live in `@backend/event-bus-redis` (live) and `@backend/event-bus-nats` (dormant —
 generated and buildable, but wired into no service):
 
 - **strategy/** — domain: the `EventBusStrategy` contract + custom (non-proto)
@@ -31,7 +31,7 @@ Public API is the flat root `src/index.ts` barrel (`./generated` +
 
 `main.ts` parses `EventBusStrategy` with **ts-morph** (`ParseStrategyService`), then emits in two stages:
 1. `EventBusService` writes abstract `<Service>EventBus` classes (`emit<Event>` / `emitMany<Event>`) + the `EventBusHost` enum into **this package's** `src/generated/index.ts`.
-2. Each adapter registered in `main.ts`'s `compile([...])` call (pug templates in `compiler/adapters/<name>/templates/`) writes transports/controllers into a **sibling package**: Nats → `@backend/nats/src/generated/index.ts`, Redis → `@backend/redis/src/generated/index.ts`.
+2. Each adapter registered in `main.ts`'s `compile([...])` call (pug templates in `compiler/adapters/<name>/templates/`) writes transports/controllers into a **sibling package**: Nats → `@backend/event-bus-nats/src/generated/index.ts`, Redis → `@backend/event-bus-redis/src/generated/index.ts`.
 
 Adding an adapter means a `compiler/adapters/<name>/` folder (factory + `BaseAdapter` subclass + templates) and one entry in `compile([...])`. `BaseAdapter.onInit` creates its output file, so the target package does not need a committed `generated/` stub. Event ids are exposed raw (`method.eventId`, dot-cased `auth.user.create`) — each adapter decides how to shape them: Nats kebab-cases them into subjects, Redis uses them verbatim as queue names.
 
@@ -46,7 +46,7 @@ Re-exports `./generated` (the abstract buses + `EventBusHost`) and `./strategy/e
 ## Commands
 
 ```bash
-pnpm compile          # tsx compiler/main.ts → regenerates src/generated + @backend/nats/src/generated, prettier-formatted as it writes
+pnpm compile          # tsx compiler/main.ts → regenerates src/generated + @backend/event-bus-{nats,redis}/src/generated, prettier-formatted as it writes
 pnpm build            # tsdown: src → dist (cjs + d.ts)
 pnpm dev              # tsdown --watch (build only — does NOT recompile)
 pnpm lint / format / format:generated / reset
@@ -56,7 +56,7 @@ Turbo splits stages: `compile` (inputs `src/strategy/**`,`compiler/**` → outpu
 
 ## Gotchas
 
-- One compile regenerates **three** packages (this one + `@backend/nats` + `@backend/redis`); rebuild them after editing the strategy. Never hand-edit any `generated/`.
+- One compile regenerates **three** packages (this one + `@backend/event-bus-nats` + `@backend/event-bus-redis`); rebuild them after editing the strategy. Never hand-edit any `generated/`.
 - Fix generated-output bugs in the strategy, the compiler services, or the adapter templates — not the emitted `.ts`.
 - Both writes (`BaseAdapter.run`, `EventBusService.compile`) go through `FormatService` from `@packages/compiler-utils`, so the emitted files are prettier-formatted before they reach disk and the turbo cache. A plain `sourceFile.save()` would reintroduce raw output on cache hits.
 - cjs-only output; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

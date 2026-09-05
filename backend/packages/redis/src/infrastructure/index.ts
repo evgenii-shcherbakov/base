@@ -5,5 +5,6 @@ export * from './constants';
 export * from './mediators';
 export * from './parking';
 export * from './registry';
+export * from './topology';
 export * from './types';
 export * from './utils';

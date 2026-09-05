@@ -12,6 +12,7 @@ import {
   RedisParkingService,
   RedisQueueClient,
   RedisSubscriptionRegistry,
+  RedisTopologyReporter,
   REDIS_CLIENT,
   REDIS_CONFIG_SERVICE,
   REDIS_CONNECTION,
@@ -19,6 +20,7 @@ import {
   REDIS_MICROSERVICE_OPTIONS,
   REDIS_PARKING,
   REDIS_SUBSCRIPTION_REGISTRY,
+  REDIS_TOPOLOGY,
 } from '@/infrastructure';
 import { RedisEventBusServer } from '@/interface';
 
@@ -105,6 +107,20 @@ export class RedisModule {
             eventIds: [...(REDIS_HOST_EVENTS[params.host] ?? [])],
             connection: connectionService.getClient(),
             workerOptions: configService.getOrThrow('getWorkerOptions', { infer: true })(),
+          });
+        },
+      },
+      {
+        // Nothing injects it — it exists for its bootstrap hook. The mediator is a dependency
+        // because it owns the count of the workers it is about to run.
+        provide: REDIS_TOPOLOGY,
+        inject: [REDIS_MEDIATOR],
+        useFactory: (mediator: RedisMediatorService): RedisTopologyReporter => {
+          return new RedisTopologyReporter({
+            mediator,
+            host: params.host,
+            registry: globalQueueRegistry,
+            onlyEmitting: params.onlyEmitting,
           });
         },
       },

@@ -32,6 +32,15 @@ export class RedisMediatorService implements OnApplicationBootstrap, OnApplicati
 
   constructor(private readonly params: RedisMediatorParams) {}
 
+  /**
+   * The number of workers this mediator runs — one per event the host owns. Reported from the
+   * declared events rather than from `this.workers`, so it is correct whichever order the
+   * bootstrap hooks happen to run in.
+   */
+  getWorkerCount(): number {
+    return this.params.eventIds.length;
+  }
+
   onApplicationBootstrap(): void {
     this.params.eventIds.forEach((eventId) => {
       const worker = new Worker(eventId, (job: Job) => this.fanOut(eventId, job), {

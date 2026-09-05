@@ -5,3 +5,4 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 export const REDIS_SUBSCRIPTION_REGISTRY = Symbol('REDIS_SUBSCRIPTION_REGISTRY');
 export const REDIS_PARKING = Symbol('REDIS_PARKING');
 export const REDIS_MEDIATOR = Symbol('REDIS_MEDIATOR');
+export const REDIS_TOPOLOGY = Symbol('REDIS_TOPOLOGY');

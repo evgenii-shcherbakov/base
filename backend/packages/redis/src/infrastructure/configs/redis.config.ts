@@ -3,12 +3,17 @@ import { DefaultJobOptions, QueueOptions, WorkerOptions } from 'bullmq';
 import { kebabCase } from 'change-case-all';
 import { RedisOptions } from 'ioredis';
 import zod from 'zod';
+import { RedisParkingOptions } from '../types';
 
 const env = validateEnv({
   REDIS_URL: zod.string().default('redis://localhost:6379'),
   REDIS_QUEUE_PREFIX: zod.string().default('bull'),
   REDIS_WORKER_CONCURRENCY: zod.coerce.number().int().positive().default(1),
   REDIS_EVENT_BUS_NAMESPACE: zod.string().default('event-bus'),
+  // Parking buffer for events fanned out while nobody was subscribed yet. Mirrors the job
+  // retention above: `count` of `removeOnComplete`, `age` of `removeOnFail`. 0 disables it.
+  REDIS_PARKING_MAX_LENGTH: zod.coerce.number().int().nonnegative().default(1000),
+  REDIS_PARKING_TTL: zod.coerce.number().int().positive().default(86400),
   // 0 = dual stack, 4 = IPv4 only, 6 = IPv6 only. Needed on IPv6-only private networks
   // (Railway): ioredis resolves an A record by default and fails with ENOTFOUND.
   REDIS_IP_FAMILY: zod.coerce
@@ -59,6 +64,16 @@ export const redisConfig = () => {
     /** Channel carrying the ids of events whose consumer set has just changed. */
     getInvalidationChannel: (): string => {
       return `${env.REDIS_EVENT_BUS_NAMESPACE}:subs:changed`;
+    },
+    /** List holding the events fanned out before anyone was subscribed to them. */
+    getParkingKey: (eventId: string): string => {
+      return `${env.REDIS_EVENT_BUS_NAMESPACE}:parked:${eventId}`;
+    },
+    getParkingOptions: (): RedisParkingOptions => {
+      return {
+        maxLength: env.REDIS_PARKING_MAX_LENGTH,
+        ttlSeconds: env.REDIS_PARKING_TTL,
+      };
     },
   } as const;
 };

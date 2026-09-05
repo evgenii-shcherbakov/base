@@ -4,6 +4,7 @@ import { Job, Worker, WorkerOptions } from 'bullmq';
 import Redis from 'ioredis';
 import { RedisQueueClient } from '../clients';
 import { buildConsumerQueueName, buildFanOutJobId } from '../constants';
+import { RedisParkingService } from '../parking';
 import { RedisSubscriptionRegistry } from '../registry';
 
 export type RedisMediatorParams = {
@@ -11,6 +12,7 @@ export type RedisMediatorParams = {
   connection: Redis;
   client: RedisQueueClient;
   subscriptionRegistry: RedisSubscriptionRegistry;
+  parking: RedisParkingService;
   workerOptions: Omit<WorkerOptions, 'connection'>;
 };
 
@@ -54,11 +56,22 @@ export class RedisMediatorService implements OnApplicationBootstrap, OnApplicati
   }
 
   private async fanOut(eventId: string, job: Job): Promise<void> {
-    const consumerIds = await this.params.subscriptionRegistry.getConsumers(eventId);
+    let consumerIds = await this.params.subscriptionRegistry.getConsumers(eventId);
 
     if (!consumerIds.length) {
-      this.logger.debug(`No consumers registered for "${eventId}", job ${job.id} dropped`);
-      return;
+      // Parked rather than dropped: a consumer that has not published its subscription yet
+      // replays this entry the first time it registers.
+      await this.params.parking.park(eventId, { id: job.id, data: job.data });
+
+      // It may have registered between the cached read above and the park, in which case its
+      // replay ran too early to see this entry — re-read past the cache and fan out normally.
+      // A duplicate is harmless here: both paths use the same deterministic job id.
+      consumerIds = await this.params.subscriptionRegistry.getConsumers(eventId, { fresh: true });
+
+      if (!consumerIds.length) {
+        this.logger.debug(`No consumers registered for "${eventId}", job ${job.id} parked`);
+        return;
+      }
     }
 
     // Deriving the target job id from the source one makes the fan-out idempotent: a

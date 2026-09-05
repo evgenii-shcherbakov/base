@@ -9,6 +9,7 @@ import {
   redisConfig,
   RedisConnectionService,
   RedisMediatorService,
+  RedisParkingService,
   RedisQueueClient,
   RedisSubscriptionRegistry,
   REDIS_CLIENT,
@@ -16,6 +17,7 @@ import {
   REDIS_CONNECTION,
   REDIS_MEDIATOR,
   REDIS_MICROSERVICE_OPTIONS,
+  REDIS_PARKING,
   REDIS_SUBSCRIPTION_REGISTRY,
 } from '@/infrastructure';
 import { RedisEventBusServer } from '@/interface';
@@ -64,17 +66,41 @@ export class RedisModule {
         },
       },
       {
+        provide: REDIS_PARKING,
+        inject: [REDIS_CONNECTION, REDIS_CLIENT, REDIS_CONFIG_SERVICE],
+        useFactory: (
+          connectionService: RedisConnectionService,
+          client: RedisQueueClient,
+          configService: ConfigService<RedisConfig>,
+        ): RedisParkingService => {
+          return new RedisParkingService({
+            client,
+            connection: connectionService.getClient(),
+            getParkingKey: configService.getOrThrow('getParkingKey', { infer: true }),
+            options: configService.getOrThrow('getParkingOptions', { infer: true })(),
+          });
+        },
+      },
+      {
         // Owned events are fanned out even in `onlyEmitting` mode — nobody else mediates them.
         provide: REDIS_MEDIATOR,
-        inject: [REDIS_CONNECTION, REDIS_CLIENT, REDIS_SUBSCRIPTION_REGISTRY, REDIS_CONFIG_SERVICE],
+        inject: [
+          REDIS_CONNECTION,
+          REDIS_CLIENT,
+          REDIS_SUBSCRIPTION_REGISTRY,
+          REDIS_PARKING,
+          REDIS_CONFIG_SERVICE,
+        ],
         useFactory: (
           connectionService: RedisConnectionService,
           client: RedisQueueClient,
           subscriptionRegistry: RedisSubscriptionRegistry,
+          parking: RedisParkingService,
           configService: ConfigService<RedisConfig>,
         ): RedisMediatorService => {
           return new RedisMediatorService({
             client,
+            parking,
             subscriptionRegistry,
             eventIds: [...(REDIS_HOST_EVENTS[params.host] ?? [])],
             connection: connectionService.getClient(),
@@ -89,14 +115,21 @@ export class RedisModule {
     if (!params.onlyEmitting) {
       providers.push({
         provide: REDIS_MICROSERVICE_OPTIONS,
-        inject: [REDIS_CONNECTION, REDIS_SUBSCRIPTION_REGISTRY, REDIS_CONFIG_SERVICE],
+        inject: [
+          REDIS_CONNECTION,
+          REDIS_SUBSCRIPTION_REGISTRY,
+          REDIS_PARKING,
+          REDIS_CONFIG_SERVICE,
+        ],
         useFactory: (
           connectionService: RedisConnectionService,
           subscriptionRegistry: RedisSubscriptionRegistry,
+          parking: RedisParkingService,
           configService: ConfigService<RedisConfig>,
         ): CustomStrategy => {
           return {
             strategy: new RedisEventBusServer({
+              parking,
               subscriptionRegistry,
               registry: globalQueueRegistry,
               connection: connectionService.getClient(),

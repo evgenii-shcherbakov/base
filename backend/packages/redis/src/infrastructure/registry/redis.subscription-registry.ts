@@ -63,9 +63,13 @@ export class RedisSubscriptionRegistry implements OnApplicationBootstrap, OnAppl
     }
   }
 
-  async publish(subscriptions: RedisQueueSubscription[]): Promise<void> {
+  /**
+   * @returns the subscriptions registered for the very first time — the ones whose parked
+   * events still have to be replayed. A restart of a known consumer returns nothing.
+   */
+  async publish(subscriptions: RedisQueueSubscription[]): Promise<RedisQueueSubscription[]> {
     if (!subscriptions.length) {
-      return;
+      return [];
     }
 
     const pipeline = this.connection.pipeline();
@@ -82,19 +86,26 @@ export class RedisSubscriptionRegistry implements OnApplicationBootstrap, OnAppl
 
     // `SADD` answers 1 only when the consumer was not registered yet, so a restart of an
     // already-known subscriber announces nothing.
-    const addedEventIds = new Set(
-      subscriptions
-        .filter((_subscription, index) => results?.[index]?.[1] === 1)
-        .map((subscription) => subscription.eventId),
+    const addedSubscriptions = subscriptions.filter(
+      (_subscription, index) => results?.[index]?.[1] === 1,
     );
 
-    await this.announce(Array.from(addedEventIds));
+    await this.announce(
+      Array.from(new Set(addedSubscriptions.map((subscription) => subscription.eventId))),
+    );
+
+    return addedSubscriptions;
   }
 
-  async getConsumers(eventId: string): Promise<string[]> {
+  /**
+   * @param options.fresh bypasses the TTL cache. The mediator needs it after parking a job:
+   * a consumer may have registered since the cached read, and a stale empty set would leave
+   * the event sitting in the parking list with nobody left to replay it.
+   */
+  async getConsumers(eventId: string, options?: { fresh?: boolean }): Promise<string[]> {
     const cached = this.consumersCache.get(eventId);
 
-    if (cached && cached.expiresAt > Date.now()) {
+    if (!options?.fresh && cached && cached.expiresAt > Date.now()) {
       return cached.consumerIds;
     }
 

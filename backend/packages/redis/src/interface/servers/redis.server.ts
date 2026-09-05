@@ -7,6 +7,7 @@ import { isObservable, lastValueFrom } from 'rxjs';
 import {
   isConsumerQueueName,
   REDIS_ERROR_FALLBACK,
+  RedisParkingService,
   RedisQueueRegistry,
   RedisQueueSubscription,
   RedisSubscriptionRegistry,
@@ -17,6 +18,7 @@ export type RedisEventBusServerParams = {
   connection: Redis;
   registry: RedisQueueRegistry;
   subscriptionRegistry: RedisSubscriptionRegistry;
+  parking: RedisParkingService;
   workerOptions: Omit<WorkerOptions, 'connection'>;
 };
 
@@ -43,7 +45,12 @@ export class RedisEventBusServer extends Server implements CustomTransportStrate
       const subscriptions = this.params.registry.getSubscriptions();
 
       this.assertSubscriptions(subscriptions);
-      await this.params.subscriptionRegistry.publish(subscriptions);
+
+      // Publishing first is what makes the replay safe: from this point the mediators fan out
+      // to these queues directly, so an event parked between the replay and the registration
+      // cannot slip through unnoticed.
+      const addedSubscriptions = await this.params.subscriptionRegistry.publish(subscriptions);
+      await this.params.parking.replay(addedSubscriptions);
 
       subscriptions.forEach((subscription) => {
         this.workers.push(this.createWorker(subscription));

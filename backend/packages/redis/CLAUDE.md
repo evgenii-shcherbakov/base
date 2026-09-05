@@ -42,10 +42,12 @@ are rejected — that is why `buildFanOutJobId()` prefixes the source job id wit
 Concrete adapter for the abstract ports of `@backend/event-bus`:
 
 - **infrastructure/** — driven/outbound: `configs/` (connection, queue/worker/job options, subscription
-  key), `constants/` (DI tokens, queue-name helpers), `types/` (`RedisQueueSubscription`), `utils/`
-  (`globalQueueRegistry`), `connections/` (the shared ioredis client), `clients/`
-  (`RedisQueueClient` — the queue pool used for emitting), `registry/` (`RedisSubscriptionRegistry`),
-  `mediators/` (`RedisMediatorService` — the fan-out workers).
+  and parking keys), `constants/` (DI tokens, queue-name helpers), `types/`
+  (`RedisQueueSubscription`), `utils/` (`globalQueueRegistry`), `connections/` (the shared ioredis
+  client), `clients/` (`RedisQueueClient` — the queue pool used for emitting), `registry/`
+  (`RedisSubscriptionRegistry`), `parking/` (`RedisParkingService` — the buffer for events with no
+  consumers yet), `mediators/` (`RedisMediatorService` — the fan-out workers), `topology/`
+  (`RedisTopologyReporter` — the bootstrap line reporting workers and connections).
 - **interface/** — driving/inbound: `decorators/` (`@RedisController`, `@RedisEvent`), `contexts/`
   (`RedisJobContext`), `interceptors/` (error logging), `servers/` (`RedisEventBusServer`, the
   `CustomTransportStrategy` that runs the consumer workers).
@@ -58,10 +60,18 @@ Public API is the flat root `src/index.ts` barrel. Inside the package `@/*` alia
 ## Module (`redis.module.ts`)
 
 - `RedisModule.forRoot({ host: EventBusHost, onlyEmitting? })` — global. Always provides the shared
-  connection, `RedisQueueClient`, `RedisSubscriptionRegistry` and the **mediator** — an emit-only
-  service still has to fan out the events it owns, so `onlyEmitting` does not disable it. Unless
-  `onlyEmitting`, it also provides `REDIS_MICROSERVICE_OPTIONS`, connected in `main.ts` via
+  connection, `RedisQueueClient`, `RedisSubscriptionRegistry`, `RedisParkingService`,
+  `RedisTopologyReporter` and the **mediator** — an emit-only service still has to fan out the
+  events it owns, so `onlyEmitting` does not disable it. Unless `onlyEmitting`, it also provides
+  `REDIS_MICROSERVICE_OPTIONS`, connected in `main.ts` via
   `app.connectMicroservice(app.get(REDIS_MICROSERVICE_OPTIONS))`.
+- `REDIS_TOPOLOGY` is injected by nobody: it exists for its bootstrap hook, which logs how many
+  workers this process runs and roughly how many Redis connections that costs
+  (`1 shared + 1 invalidation channel + 1 per worker` — BullMQ does not expose the sockets it
+  duplicates, so the number is an estimate and is printed with a `~`). All of it is counted from
+  the **declared** topology, never from live state: Nest calls a module's bootstrap hooks
+  concurrently and the server strategy spawns its workers from `listen()`, so reading what has
+  actually started would be a race.
 - `RedisModule.forFeature({ EventBus })` — binds an abstract bus to its concrete client via
   `RedisClientFactory`, exactly like `NatsModule.forFeature`.
 - The connection provider is registered **last** on purpose: Nest runs shutdown hooks in provider
@@ -95,8 +105,8 @@ export class RedisStorageObjectController
 
 ## Delivery semantics
 
-Per-job: `attempts: 10` with exponential backoff from 1s, `removeOnComplete` after 1h/1000 jobs,
-`removeOnFail` after 24h — the `failed` set is the DLQ. There is no ack/nak: a rejected processor
+Per-job: `REDIS_JOB_ATTEMPTS` attempts (10) with exponential backoff from `REDIS_JOB_BACKOFF_DELAY`
+(1s), `removeOnComplete` after 1h/1000 jobs, `removeOnFail` after 24h — the `failed` set is the DLQ. There is no ack/nak: a rejected processor
 marks the job failed and BullMQ schedules the retry, so **handlers must be idempotent**.
 Worker `concurrency` defaults to 1 (the NATS `maxAckPending: 1` equivalent) — override globally with
 `REDIS_WORKER_CONCURRENCY` or per controller with `@RedisController({ concurrency })`.
@@ -138,6 +148,17 @@ outside the interceptor's observable. It lives in `@backend/common` rather than 
   reads them back with a 5s TTL cache. Entries are durable: they are never removed on shutdown, so
   jobs pile up in a stopped consumer's queue and are delivered on restart (JetStream durable-consumer
   semantics). Retiring a consumer is a manual `SREM` plus queue cleanup.
+- `RedisParkingService` holds the events a mediator could not route because nobody was subscribed
+  yet. They go into a plain Redis **list** (`event-bus:parked:<eventId>`), not a queue — nothing
+  drains it in the background, it is read once, at a subscriber's first bootstrap. `publish()`
+  returns the subscriptions whose `SADD` answered 1, and `RedisEventBusServer.listen()` replays
+  their parked entries into their own queues with the same `buildFanOutJobId()` the fan-out uses,
+  so an event that was both parked and fanned out is still delivered once. The read is
+  **non-destructive**: two brand-new consumers of one event need the same entries and there is no
+  safe moment to delete them for everyone, so the list is bounded instead — `LTRIM` to
+  `REDIS_PARKING_MAX_LENGTH`, `EXPIRE` to `REDIS_PARKING_TTL`. Parking is unconditional, so an
+  event with no subscriber at all (`storage.image.delete`) also accumulates a capped list, which
+  doubles as the answer to "what is being emitted into nothing".
 - **Cache invalidation.** A newly registered subscription would stay invisible to already-running
   mediators until their TTL expires, so `publish()` also announces the changed event ids on
   `event-bus:subs:changed` and every process drops the matching cache entry at once. Only event ids
@@ -150,7 +171,12 @@ outside the interceptor's observable. It lives in `@backend/common` rather than 
 
 `REDIS_URL` (default `redis://localhost:6379`), `REDIS_QUEUE_PREFIX` (default `bull`),
 `REDIS_WORKER_CONCURRENCY` (default `1`), `REDIS_EVENT_BUS_NAMESPACE` (default `event-bus`),
-`REDIS_IP_FAMILY` (default `0`).
+`REDIS_IP_FAMILY` (default `0`), `REDIS_PARKING_MAX_LENGTH` (default `1000`, `0` disables parking
+and restores the old drop-on-no-consumers behaviour), `REDIS_PARKING_TTL` (default `86400`),
+`REDIS_JOB_ATTEMPTS` (default `10`), `REDIS_JOB_BACKOFF_DELAY` (default `1000`).
+The parking bounds mirror the job retention: `count` of `removeOnComplete`, `age` of `removeOnFail`.
+The two job knobs exist for the same reason `NATS_MAX_DELIVER` does — the production ladder takes
+minutes to walk, so the e2e suite pins a short one.
 
 `REDIS_IP_FAMILY` is the ioredis `family` option — `0` dual stack, `4` IPv4 only, `6` IPv6 only. It
 defaults to dual stack because managed private networks are often IPv6-only (Railway's
@@ -161,29 +187,71 @@ reconnects turn out flaky on such a network.
 
 ```bash
 pnpm build            # format:generated → tsdown → dist (cjs + d.ts)
-pnpm test             # jest; single file: pnpm test -- redis.queue.constants
+pnpm test             # unit jest; single file: pnpm test -- redis.queue.constants
+pnpm test:e2e         # server-backed suite; auto-skips when no Redis answers
 pnpm dev / test:watch / lint / format / format:generated / reset
 ```
 
 - No `compile` here — `src/generated/` is regenerated by `pnpm compile:event-bus`; change events in
   `EventBusStrategy`, never hand-edit `generated/`.
-- Specs sit next to their subject (`*.spec.ts` under `src/`), are excluded from the turbo `build`
-  inputs, and are not part of the tsdown entry graph — but they *are* in the tsconfig, so `tsc` and
-  `eslint` type-check them. Target lib is ES2021: assign `cause` via `Object.assign`, not `err.cause =`.
+- Specs sit next to their subject (`*.spec.ts` / `*.e2e-spec.ts` under `src/`), are excluded from
+  the turbo `build` inputs, and are not part of the tsdown entry graph — but they *are* in the
+  tsconfig, so `tsc` and `eslint` type-check them, `layerGuard()` included: an e2e spec that boots a
+  controller belongs under `interface/`, whichever layer it is exercising. Target lib is ES2021:
+  assign `cause` via `Object.assign`, not `err.cause =`.
+- The unit suite covers the mechanism this adapter exists for (`@RedisController` rewriting patterns,
+  the mediator's fan-out and parking) plus the pieces a broken one fails silently in: the
+  subscription registry's cache and announcements, the server's bootstrap assertions and error
+  normalisation, the interceptor's message recovery, and the config's keys and knobs.
 - Every worker costs a Redis connection (BullMQ duplicates the shared one for blocking commands):
-  mediators for the host's own events plus one per subscription. Watch the count as events grow; the
-  cheaper alternative is fanning out directly in the producer instead of via the mediator.
+  mediators for the host's own events plus one per subscription. `RedisTopologyReporter` prints the
+  running total at bootstrap — watch it as events grow; the cheaper alternative is fanning out
+  directly in the producer instead of via the mediator.
 - First-start race: an event emitted before a brand-new consumer has published its subscription
-  passes it by — the mediator logs `No consumers registered … dropped` and completes the job. The
-  registry is durable and new subscriptions invalidate the mediators' caches immediately, so the
-  window only exists on the very first boot of a subscription (or after the Redis data is wiped) —
-  a redeploy of a known subscriber is safe, its jobs simply wait in its queue. Seeding the registry
-  by hand closes it on a fresh environment:
+  finds no route, and the mediator **parks** it instead of dropping it (see *Registries*) — the
+  consumer replays it the first time it registers, so no manual `SADD` seeding is needed any more.
+  Failing the job instead is still **not** an option: events with no subscriber at all
+  (`storage.image.delete`) would retry ten times and fill the DLQ. After parking, the mediator
+  re-reads the consumer set past the TTL cache — otherwise a consumer that registered between the
+  cached read and the park would have replayed too early to see the entry. That costs one extra
+  `SMEMBERS` per parked event, in a background worker.
   ```bash
-  redis-cli -u "$REDIS_URL" SADD event-bus:subs:auth.user.create storage.storage-object
+  redis-cli -u "$REDIS_URL" LRANGE event-bus:parked:auth.user.create 0 -1   # what went nowhere
   ```
-  A dropped event can also be replayed from the source queue's `completed` set within the hour
-  (`removeOnComplete: { age: 3600 }`). Failing the job instead of dropping it is **not** an option:
-  events with no subscriber at all (`storage.image.delete`) would retry ten times and fill the DLQ.
-- Handlers must be idempotent (up to 10 attempts, plus at-least-once fan-out).
+- Handlers must be idempotent (up to `REDIS_JOB_ATTEMPTS` attempts, plus at-least-once fan-out).
 - cjs-only; consumers resolve `dist/`, rebuild after changes.
+
+### The e2e suite
+
+Two specs under `src/interface/servers/` exercise the adapter against a real server. Start one and
+run them:
+
+```bash
+pnpm docker:local:d      # or: docker run --rm -p 6379:6379 redis:latest
+pnpm test:e2e
+```
+
+- `redis.transport.e2e-spec.ts` boots a **real Nest microservice** the way `main.ts` does
+  (`createNestApplication` → `connectMicroservice(app.get(REDIS_MICROSERVICE_OPTIONS))` →
+  `startAllMicroservices`), with three controllers carrying different `consumer` ids on
+  `auth.user.create`. That is the only place the mediator's fan-out is visible for what it is, and
+  the only coverage of the `failedReason` chain: the failing controller walks its attempts and the
+  spec reads the message back out of the `failed` set.
+- `redis.parking.e2e-spec.ts` reproduces the first-boot race on `storage.image.delete`: an
+  `onlyEmitting` app emits with nobody subscribed, a second app registers for the first time and
+  gets the replay, a third restart gets nothing.
+- `test/redis-server.setup.js` is a jest `globalSetup`, not a `beforeAll`, for two reasons that both
+  come down to timing: `redis.config.ts` validates env at module load, so the overrides have to be
+  set before the spec is imported; and the server probe has to land in `process.env` before the
+  workers fork, so the spec can pick `describe` vs `describe.skip` synchronously. Without a server
+  jest reports the suites as *skipped* rather than passing on an empty run.
+- The setup pins `REDIS_QUEUE_PREFIX=bull-e2e` and `REDIS_EVENT_BUS_NAMESPACE=event-bus-e2e`, so the
+  suite cannot touch the queues and registries of a local dev run, and `REDIS_JOB_ATTEMPTS=3` with
+  `REDIS_JOB_BACKOFF_DELAY=100` so the retry ladder takes milliseconds instead of minutes.
+- It probes with a raw socket rather than ioredis: a failed client connection leaves reconnect
+  machinery behind that keeps jest from exiting, and the skip path is exactly the one that has to
+  stay quiet.
+- Each spec wipes only **its own** event's keys in `beforeAll` (`bull-e2e:<eventId>*`,
+  `event-bus-e2e:*:<eventId>`) — a blanket wipe of the prefixes would let two files running in
+  parallel workers destroy each other's state. Keys are left behind afterwards, so a failed run can
+  be inspected.

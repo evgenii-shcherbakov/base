@@ -22,4 +22,9 @@ export class RedisQueueRegistry {
   getQueueNames(): string[] {
     return Array.from(this.subscriptionByQueueName.keys());
   }
+
+  /** Only for tests — the registry is a module singleton shared by every spec file. */
+  clear(): void {
+    this.subscriptionByQueueName.clear();
+  }
 }

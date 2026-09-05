@@ -9,6 +9,10 @@ const env = validateEnv({
   REDIS_URL: zod.string().default('redis://localhost:6379'),
   REDIS_QUEUE_PREFIX: zod.string().default('bull'),
   REDIS_WORKER_CONCURRENCY: zod.coerce.number().int().positive().default(1),
+  // Configurable for the same reason NATS_MAX_DELIVER is: the production ladder takes minutes
+  // to walk, so the e2e suite pins a short one.
+  REDIS_JOB_ATTEMPTS: zod.coerce.number().int().positive().default(10),
+  REDIS_JOB_BACKOFF_DELAY: zod.coerce.number().int().positive().default(1000),
   REDIS_EVENT_BUS_NAMESPACE: zod.string().default('event-bus'),
   // Parking buffer for events fanned out while nobody was subscribed yet. Mirrors the job
   // retention above: `count` of `removeOnComplete`, `age` of `removeOnFail`. 0 disables it.
@@ -43,8 +47,8 @@ export const redisConfig = () => {
         prefix: env.REDIS_QUEUE_PREFIX,
         defaultJobOptions: {
           // Mirrors the NATS consumer: maxDeliver 10, then the job lands in `failed` (the DLQ).
-          attempts: 10,
-          backoff: { type: 'exponential', delay: 1000 },
+          attempts: env.REDIS_JOB_ATTEMPTS,
+          backoff: { type: 'exponential', delay: env.REDIS_JOB_BACKOFF_DELAY },
           removeOnComplete: { age: 3600, count: 1000 },
           removeOnFail: { age: 86400 },
         } satisfies DefaultJobOptions,

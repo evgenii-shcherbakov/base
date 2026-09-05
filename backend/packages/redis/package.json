@@ -14,6 +14,7 @@
     "build": "pnpm format:generated --log-level error && tsdown",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
     "reset": "rm -rf .turbo dist node_modules",
     "reset:modules": "rm -rf node_modules"
   },
@@ -32,6 +33,9 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "@nestjs/core": "11.1.27",
+    "@nestjs/platform-express": "11.1.27",
+    "@nestjs/testing": "11.1.27",
     "@packages/configs": "workspace:*",
     "@types/jest": "30.0.0",
     "jest": "30.3.0",

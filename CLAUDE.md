@@ -49,6 +49,8 @@ pnpm dev                      # all backend + frontend in watch mode
 pnpm dev:backend.auth         # one service (also .api-gateway, .storage, frontend.admin)
 pnpm build                    # build everything (runs ^compile then ^build)
 pnpm build:backend.auth       # one service
+pnpm test                     # unit suites of every package that has them
+pnpm test:e2e                 # e2e suites; each skips itself when its server is unreachable
 pnpm lint                     # eslint --fix across workspaces
 pnpm format                   # prettier
 pnpm docker:local             # postgres + redis only (for local dev against real infra)
@@ -75,7 +77,7 @@ pnpm migrate                  # run pending migrations + data-seeding tasks
 pnpm migrate:tasks            # run only the data-seeding tasks (migrator/tasks/)
 ```
 
-**Tests, lint & strictness:** Jest is configured per package that has tests (`pnpm test`, `pnpm test:watch`, single file: `pnpm test -- path/to/file.spec.ts`) — there is no root `test` script and no turbo `test` task, so run it inside the package. The only suites so far are `@backend/common`, `@backend/redis` and `@backend/nats` (`src/**/*.spec.ts`); the backend apps carry a jest config but still have zero specs, which is why wiring a repo-wide `turbo run test` would fail on them. The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`), so the linter won't catch those. TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin but **off** for backend apps and `@backend/packages/*`.
+**Tests, lint & strictness:** Jest is configured per package that has tests. Run them repo-wide from the root (`pnpm test`, `pnpm test:e2e`, scoped with `--filter=<pkgname>`) or inside a package (`pnpm test:watch`, single file: `pnpm test -- path/to/file.spec.ts`). Both turbo tasks depend on `^build`, because specs import sibling packages through their built `dist`; `test:e2e` is `cache: false` — whether a suite runs or skips depends on a reachable broker, which turbo cannot hash. The only unit suites so far are `@backend/common`, `@backend/redis` and `@backend/nats` (`src/**/*.spec.ts`), and the only e2e suites are `@backend/redis` and `@backend/nats` (`src/**/*.e2e-spec.ts`, auto-skipped when the server is down). The backend apps carry a jest config but still have zero specs, so their `test`/`test:e2e` scripts pass `--passWithNoTests` as a temporary stub to keep the repo-wide run green — drop the flag from a service the moment it gets its first spec. The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`), so the linter won't catch those. TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin but **off** for backend apps and `@backend/packages/*`.
 
 ## Code navigation (LSP vs grep)
 

@@ -16,6 +16,15 @@
       "dependsOn": ["^compile", "^build"]
     },
     "prod": {},
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "test:e2e": {
+      // Whether the suite runs or skips depends on a broker being reachable, which is not an
+      // input turbo can hash — a cached result would replay the wrong verdict.
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
     "format": {
       "cache": false
     },

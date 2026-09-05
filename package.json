@@ -28,6 +28,8 @@
     "prod:backend.api-gateway": "turbo run prod --filter=backend.api-gateway",
     "prod:backend.auth": "turbo run prod --filter=backend.auth",
     "prod:backend.storage": "turbo run prod --filter=backend.storage",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
     "format": "turbo run format",
     "lint": "turbo run lint",
     "gen:package": "turbo gen package && pnpm install",

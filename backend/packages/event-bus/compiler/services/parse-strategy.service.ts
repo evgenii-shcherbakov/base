@@ -2,7 +2,7 @@ import { camelCase, constantCase, dotCase, pascalCase } from 'change-case-all';
 import { Node } from 'ts-morph';
 import { ContextService } from './context.service';
 
-type EventBusMethod = {
+export type EventBusMethod = {
   emitterName: string;
   emitterManyName: string;
   handlerName: string;

@@ -1,4 +1,4 @@
-import { BaseAdapter } from '@compiler/adapters/base.adapter';
+import { BaseAdapter } from '@backend/event-bus/compiler';
 import { pascalCase } from 'change-case-all';
 
 export class RedisAdapter extends BaseAdapter {

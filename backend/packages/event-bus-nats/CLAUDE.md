@@ -10,10 +10,32 @@ the alternative broker — keep it working when changing the event bus.
 
 ## Dual nature
 
-`src/generated/index.ts` is **emitted by the `@backend/event-bus` compiler** (its Nats adapter) —
-transports (`Nats<Service>Transport`, service-scoped naming, host dropped), subscriber/handler
-interfaces, `NatsClientFactory` and `NATS_HOST_STREAMS`. Everything else (`infrastructure/`,
-`interface/`, `nats.module.ts`) is hand-written runtime. There is no compiler here.
+`src/generated/index.ts` is **emitted by this package's own compiler** (`compiler/`, run as its own
+turbo `compile` task) — transports (`Nats<Service>Transport`, service-scoped naming, host dropped),
+subscriber/handler interfaces, `NatsClientFactory` and `NATS_HOST_STREAMS`. Everything else
+(`infrastructure/`, `interface/`, `nats.module.ts`) is hand-written runtime.
+
+## Compiler — `compiler/`
+
+```
+compiler/
+  main.ts           # builds the context, runs the adapter, writes ../src/generated/index.ts
+  nats.adapter.ts   # BaseAdapter subclass: imports, per-service transports, client, registry
+  templates/*.pug   # nats.controller / nats.client / nats.registry
+```
+
+`main.ts` gets `BaseAdapter` and `createCompilerContext()` from `@backend/event-bus/compiler` — the
+build-time entrypoint of the ports package — and parses `EventBusStrategy` itself. Nothing is handed
+over from the ports package's own compile: each turbo task is a separate process, so the ~0.5 s parse
+is repeated here in exchange for `pnpm compile` inside this package working on its own.
+
+`outputPath` is local (`join(__dirname, '..', 'src', 'generated', 'index.ts')`), which is the point:
+the task declares the output it actually writes, so a cache hit restores a complete tree. Turbo
+cannot declare outputs outside a package, so the earlier arrangement — one compile in the ports
+package writing into all three — left this file in no cache archive at all.
+
+Mirrors `@backend/event-bus-redis/compiler/` structurally; the difference is in the templates, which
+kebab-case `eventId` into subjects instead of using it verbatim as a queue name.
 
 ## Consumer-scoped subscriptions
 

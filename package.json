@@ -7,7 +7,7 @@
   "scripts": {
     "compile": "turbo run compile",
     "compile:proto": "turbo run compile --filter=@packages/proto",
-    "compile:event-bus": "turbo run compile --filter=@backend/event-bus",
+    "compile:event-bus": "turbo run compile --filter=\"@backend/event-bus*\"",
     "dev": "turbo run dev --filter=\"backend.*\" --filter=\"frontend.*\"",
     "dev:backend": "turbo run dev --filter=\"backend.*\"",
     "dev:backend.api-gateway": "turbo run dev --filter=backend.api-gateway",

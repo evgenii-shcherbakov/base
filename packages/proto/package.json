@@ -12,6 +12,7 @@
     "dev": "pnpm build --watch",
     "build": "pnpm format --log-level error && tsdown",
     "compile": "tsx compiler/main.ts",
+    "typecheck": "tsc --noEmit",
     "reset": "rm -rf .turbo dist node_modules",
     "reset:modules": "rm -rf node_modules"
   },
@@ -27,6 +28,7 @@
     "ts-morph": "catalog:",
     "ts-proto": "2.11.6",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "zod": "catalog:"
   }
 }

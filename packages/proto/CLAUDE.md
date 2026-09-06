@@ -39,6 +39,7 @@ Each extends `TransformTask` — post-processes one generated file via ts-morph 
 pnpm compile          # tsx compiler/main.ts → regenerates src/ (+ backend/frontend proto), prettier-formatted as it writes
 pnpm build            # tsdown: src/ → dist (esm + cjs + d.ts)
 pnpm dev              # tsdown --watch (build only — does NOT recompile proto)
+pnpm typecheck        # tsc --noEmit over src + compiler — the only thing that checks compiler/
 pnpm format           # prettier src
 ```
 

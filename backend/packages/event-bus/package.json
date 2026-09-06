@@ -22,6 +22,7 @@
     "lint": "eslint \"{src,compiler,test}/**/*.ts\" --fix",
     "dev": "pnpm build --watch",
     "compile": "tsx compiler/main.ts",
+    "typecheck": "tsc --noEmit",
     "build": "tsdown",
     "reset": "rm -rf .turbo dist node_modules",
     "reset:modules": "rm -rf node_modules"
@@ -38,6 +39,7 @@
     "prettier": "catalog:",
     "pug": "catalog:",
     "ts-morph": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

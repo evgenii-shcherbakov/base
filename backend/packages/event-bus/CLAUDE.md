@@ -133,6 +133,7 @@ Two things this entry constrains:
 pnpm compile          # tsx compiler/main.ts → regenerates THIS package's src/generated, prettier-formatted as it writes
 pnpm build            # tsdown: src + compiler → dist/index.cjs + dist/compiler.cjs
 pnpm dev              # tsdown --watch (build only — does NOT recompile)
+pnpm typecheck        # tsc --noEmit over src + compiler; tsx and tsdown both skip type errors
 pnpm lint / format / format:generated / reset
 ```
 

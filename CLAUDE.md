@@ -38,6 +38,8 @@ Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microserv
 
 Inside an app, TS path aliases are `@/*` (src), `@modules/*`, `@common/*`, and `@compiler/*` (proto package only). Cross-package imports always use the `@backend/…`/`@packages/…` names, never relative paths.
 
+**Dependency versions:** a dependency more than one workspace declares is pinned once, in the `catalog:` block of `pnpm-workspace.yaml`, and each manifest asks for it as `"lodash": "catalog:"`. The workspace still declares what it imports — that is what the tsdown factory and `import-x/no-extraneous-dependencies` read — while the version cannot drift between packages. Bump a shared version in `pnpm-workspace.yaml`, not in a manifest; a dependency only one workspace uses keeps its literal version there. This is not `overrides` (further down the same file): a catalog resolves what a workspace *asks* for, an override rewrites what the whole tree *gets*, transitive dependencies included.
+
 **Build config:** every package that ships a `dist/` builds with tsdown through one shared factory — `nodePackageConfig(import.meta.url)` from `@packages/configs/tsdown/package.config.mjs`. It reads the package's **own** `package.json` to decide what stays external, so an import the package does not declare gets bundled into `dist/` instead of being required at runtime. Declare the dependency; don't hand-extend `neverBundle`.
 
 **Layering invariant:** `@packages/*` are framework-agnostic — imported by **both** backend and the Next frontend, so keep Nest/React out of them. `@backend/*` may depend on Nest. Dependencies flow downward: proto/common → packages → apps.

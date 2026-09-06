@@ -61,7 +61,7 @@ Defaults are `entry: 'src/index.ts'`, `format: ['cjs']`, `dts: true`. `overrides
 - `@packages/*` and `@frontend/proto` pass `{ format: ['esm', 'cjs'] }`.
 - `@backend/event-bus` passes named entries for its second, build-time `compiler` entrypoint.
 
-A package that needs an external the factory cannot see is a package with an undeclared dependency — declare it in its `package.json` rather than hand-adding to `neverBundle`.
+A package that needs an external the factory cannot see is a package with an undeclared dependency — declare it in its `package.json` rather than hand-adding to `neverBundle`. The factory reads dependency **names**, not versions, so a `"catalog:"` specifier works exactly like a literal one.
 
 ## Layer-direction guard (`eslint/layer-guard.mjs`)
 

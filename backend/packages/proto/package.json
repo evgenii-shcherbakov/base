@@ -14,13 +14,13 @@
     "reset:modules": "rm -rf node_modules"
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.14.4",
-    "@nestjs/common": "11.1.27",
-    "@nestjs/microservices": "11.1.27",
+    "@grpc/grpc-js": "catalog:",
+    "@nestjs/common": "catalog:",
+    "@nestjs/microservices": "catalog:",
     "@packages/proto": "workspace:*",
-    "protobufjs": "7.6.3",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "protobufjs": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:"
   },
   "devDependencies": {
     "@packages/configs": "workspace:*"

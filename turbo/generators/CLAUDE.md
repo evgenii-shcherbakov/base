@@ -25,7 +25,7 @@ All three extend the `@packages/configs` tsconfig/eslint presets and build with 
 - **backend** — `@backend/*`: nest tsconfig preset + `eslint.config.mjs` + `lint`; deps `@backend/proto`, `@nestjs/common`, `@nestjs/config`, `@packages/common`, `reflect-metadata`, `rxjs`; cjs-only (no `module`).
 - **frontend** — `@frontend/*`: esm + cjs, eslint + `lint`, dep `@packages/common`.
 
-`package.json.hbs` is a Handlebars template (`{{ dashCase name }}`); the other template files are copied verbatim.
+`package.json.hbs` is a Handlebars template (`{{ dashCase name }}`); the other template files are copied verbatim. Its external dependencies are declared as `"catalog:"`, so a generated package picks up the workspace-wide version instead of a literal that goes stale in the template — which it had: `@nestjs/common` sat at `11.1.21` while the repo ran `11.1.27`.
 
 ## Editing
 

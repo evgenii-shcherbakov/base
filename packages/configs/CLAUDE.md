@@ -22,7 +22,7 @@ Gotcha: backend configs are intentionally non-strict (`strict` off), even though
 ## ESLint presets (`eslint/`)
 
 - `eslint/nest.config.mjs` → factory `nestConfig(import.meta.url)`. **The argument is required** — it feeds `tsconfigRootDir` + `projectService` (type-checked rules). Used by all backend apps and `@backend/packages/*`.
-- `eslint/next.config.mjs` → factory `nextConfig()` (no argument); reads the root `.prettierrc` via a relative path. Used only by frontend/apps/admin. Wires `@next/next` (recommended + core-web-vitals) and **`eslint-plugin-react-hooks`** (`rules-of-hooks: error`, `exhaustive-deps: warn`) on top of the TS/prettier rules — so React hook violations DO fail lint here.
+- `eslint/next.config.mjs` → factory `nextConfig(import.meta.url)`. **The argument is required** — it locates the app's `tsconfig.json` for the import resolver. Reads the root `.prettierrc` via a relative path. Used only by frontend/apps/admin. Wires `@next/next` (recommended + core-web-vitals) and **`eslint-plugin-react-hooks`** (`rules-of-hooks: error`, `exhaustive-deps: warn`) on top of the TS/prettier rules — so React hook violations DO fail lint here.
 
 Both enable `prettier/prettier: 'error'`. The nest preset runs in type-checked mode but deliberately **disables** most unsafe rules (`no-explicit-any`, `no-floating-promises`, `no-unused-vars`, `unbound-method`, `no-unsafe-*`). So the linter does NOT catch those classes of errors.
 
@@ -32,7 +32,9 @@ Two things it needs to work here:
 - **`eslint-import-resolver-typescript` is required, not an optimisation.** `@modules/…`, `@common/…` and `@compiler/…` are tsconfig path aliases that match the scoped-package pattern; unresolved, every one of the ~400 such imports reads as an undeclared external package.
 - **Type-only imports of a `@types/*` package must say `import type`.** A plain `import { Request } from 'express'` in `api-gateway` resolves to `@types/express` in devDependencies and is reported; `import type` is skipped (`includeTypes` is left at its default) and is the correct form anyway.
 
-It reaches the three backend apps and the seven `@backend/packages/*` — everything wired to `nestConfig`. `@packages/{common,proto,compiler-utils}`, `@backend/proto` and `@frontend/proto` have no `eslint.config.mjs` at all, so they are **not** covered; their dependencies are kept correct by hand.
+`nextConfig` carries the same rule, so it reaches the three backend apps, the seven `@backend/packages/*` and `frontend.admin`. Still **not** covered: `@packages/{common,proto,compiler-utils}`, `@backend/proto` and `@frontend/proto` have no `eslint.config.mjs` at all, so their dependencies are kept correct by hand.
+
+The admin app's `lint` script had to move off `next lint` for this: it runs ESLint but does not surface this rule's errors, and it is deprecated (removed in Next 16 — its own output says so). It is now a plain `eslint "src/**/*.{ts,tsx}" --fix`, like every other workspace.
 
 Wiring in a consumer:
 ```js

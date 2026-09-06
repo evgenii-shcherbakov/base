@@ -50,7 +50,7 @@
     "@refinedev/cli": "2.16.52",
     "@types/busboy": "1.5.4",
     "@types/js-cookie": "3.0.6",
-    "@types/lodash": "4.17.23",
+    "@types/lodash": "4.17.24",
     "@types/react": "19.2.9",
     "@types/react-dom": "19.2.2",
     "cross-env": "10.1.0"

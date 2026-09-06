@@ -43,7 +43,7 @@
     "@packages/compiler-utils": "workspace:*",
     "@packages/configs": "workspace:*",
     "@types/jest": "30.0.0",
-    "@types/lodash": "4.17.23",
+    "@types/lodash": "4.17.24",
     "@types/pug": "2.0.10",
     "prettier": "3.9.4",
     "pug": "3.0.4",

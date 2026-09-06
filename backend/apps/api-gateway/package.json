@@ -53,6 +53,7 @@
     "@packages/configs": "workspace:*",
     "@types/express": "5.0.5",
     "@types/jest": "30.0.0",
+    "@types/lodash": "4.17.24",
     "@types/supertest": "6.0.3",
     "jest": "30.3.0",
     "source-map-support": "0.5.21",

@@ -1,0 +1,2 @@
+export const CACHE_CONFIG_SERVICE = Symbol('CACHE_CONFIG_SERVICE');
+export const CACHE_CONNECTION = Symbol('CACHE_CONNECTION');

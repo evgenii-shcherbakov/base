@@ -37,7 +37,7 @@ Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microserv
 `pnpm-workspace.yaml` globs four package roots; package names follow a strict convention used everywhere in turbo `--filter` and imports:
 
 - `backend/apps/*` → `backend.<name>` (deployable services: `api-gateway`, `auth`, `storage`)
-- `backend/packages/*` → `@backend/<name>` (shared backend libs: `common`, `grpc`, `pg`, `mongo`, `proto`, `event-bus`, `event-bus-nats`, `event-bus-redis`)
+- `backend/packages/*` → `@backend/<name>` (shared backend libs: `cache`, `common`, `grpc`, `pg`, `mongo`, `proto`, `event-bus`, `event-bus-nats`, `event-bus-redis`)
 - `frontend/apps/*` → `frontend.<name>` (`admin`)
 - `frontend/packages/*` → `@frontend/<name>` (`proto`)
 - `packages/*` → `@packages/<name>` (cross-stack: `common`, `proto`, `compiler-utils`, `configs`)
@@ -163,6 +163,11 @@ strictness are in that package's `CLAUDE.md`; the rationale is
 Service architecture (4-layer hexagonal / use-case), the `Either` flow, the migrator sub-app and the
 shared package conventions are in **`backend/CLAUDE.md`**. `backend/apps/auth` is the reference
 implementation; `backend.api-gateway` is a deliberate two-layer exception.
+
+**Caching** is `@backend/cache`: one `CacheStore` port with a Redis and an in-memory adapter behind a
+single `CacheModule`, injected as `CacheService`. Unlike the event bus it is *not* split per
+transport — the reasoning is [ADR-0009](docs/adr/0009-cache-one-package-driver-switch.md), the
+internals are in that package's `CLAUDE.md`. No service wires it yet.
 
 ## Frontend admin
 

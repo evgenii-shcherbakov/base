@@ -32,7 +32,7 @@
       // prefixes cover the two transport packages. Keep the list here rather than in a
       // package turbo.json: a package-level task replaces this field instead of extending
       // it, so a local `env` would silently drop the entries above.
-      "env": ["NODE_ENV", "PORT", "REDIS_*", "NATS_*"],
+      "env": ["NODE_ENV", "PORT", "REDIS_*", "NATS_*", "CACHE_*"],
       "dependsOn": ["^build"]
     },
     // Cacheable, unlike lint and format: it writes nothing and is a pure function of the sources

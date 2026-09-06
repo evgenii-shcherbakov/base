@@ -31,7 +31,7 @@ read off the workspace manifests, not maintained here:
 | `backend.storage`     | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
 | `frontend.admin`      | —                                                                             |
 
-`@backend/event-bus-nats` and `@backend/mongo` declare environment no service wires.
+`@backend/cache`, `@backend/event-bus-nats` and `@backend/mongo` declare environment no service wires.
 
 <!-- env-services:end -->
 
@@ -166,6 +166,31 @@ override set any later would be read by nobody.
 
 `NATS_DELIVER_POLICY=all` replays a stream from the beginning the first time a durable is created,
 so a subscriber added later still sees what it missed; `new` opts out.
+
+### `@backend/cache`
+
+<!-- env-table:start src=backend/packages/cache/src/infrastructure/configs/cache.config.ts -->
+
+| Variable           | Type                        | Default                  |
+| ------------------ | --------------------------- | ------------------------ |
+| `REDIS_URL`        | string                      | `redis://localhost:6379` |
+| `CACHE_REDIS_URL`  | string                      | —                        |
+| `CACHE_DRIVER`     | `redis` \| `memory`         | `redis`                  |
+| `CACHE_KEY_PREFIX` | string                      | `cache`                  |
+| `CACHE_TTL`        | integer ≥ 0                 | `300`                    |
+| `CACHE_IP_FAMILY`  | integer (must be 0, 4 or 6) | `0`                      |
+
+<!-- env-table:end -->
+
+`REDIS_URL` is the same variable `@backend/event-bus-redis` reads, and by design: one Redis is what
+docker-compose and the deployments run, and the two subsystems stay apart through disjoint key
+prefixes rather than through a second URL nobody remembers to set. `CACHE_REDIS_URL` overrides it
+for the case that argument does not survive — a cache instance configured to evict under memory
+pressure has no business holding the event bus' durable queues.
+
+`CACHE_DRIVER=memory` swaps in the process-local store: no connection is opened at all, nothing is
+shared between replicas, and everything is lost on restart. It is a dev/test convenience, not a
+deployment option. `CACHE_TTL=0` stores entries without an expiry unless a call passes its own TTL.
 
 ---
 

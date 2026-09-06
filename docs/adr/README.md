@@ -35,3 +35,5 @@ template, updates this index, and links the ADR from the owning `CLAUDE.md`.
 | [0006](0006-consumer-scoped-subscriptions.md) | Subscriptions are scoped by a consumer id | Accepted | `@backend/event-bus-redis`, `@backend/event-bus-nats` |
 | [0007](0007-natsjs-v3-direct.md) | Sit directly on the nats.js v3 client, drop the wrapper library | Accepted | `@backend/event-bus-nats` |
 | [0008](0008-generated-env-tables.md) | Env tables are generated from the zod schemas | Accepted | `@packages/env-docs`, `docs/env.md` |
+| [0009](0009-cache-one-package-driver-switch.md) | The cache is one package with a driver switch, not a package per adapter | Accepted | `@backend/cache` |
+| [0010](0010-cache-fails-soft.md) | Cache operations fail soft instead of returning `Either` | Accepted | `@backend/cache` |

@@ -39,4 +39,3 @@ pnpm format / reset
 
 - `grpcConfig` is the one place that maps host → URL → services; keep it and the `*_GRPC_URL` env vars in sync.
 - `lodash` is used (`grpc.module`, `client-registry`) and is declared in this package's deps, with `@types/lodash` in devDeps.
-- Output is cjs-only; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

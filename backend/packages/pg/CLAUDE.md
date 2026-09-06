@@ -55,4 +55,3 @@ src/
 pnpm build / dev / lint / format / reset
 ```
 - `lodash` is declared in this package's deps, with `@types/lodash` in devDeps.
-- cjs-only; consumers resolve `dist/`, rebuild after changes (turbo `^build`).

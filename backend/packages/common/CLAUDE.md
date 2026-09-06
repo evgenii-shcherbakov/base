@@ -41,9 +41,7 @@ pnpm format           # prettier src
 pnpm reset            # rm -rf .turbo dist node_modules
 ```
 
-Specs sit next to their subject (`*.spec.ts` under `src/`) and are excluded from the turbo `build` inputs. A spec must import its subject by relative path, not through `@backend/common`: the barrel pulls in `commonConfig`, which validates env at import time.
-
-Consumers resolve `dist/`; turbo's `^build` rebuilds before downstream `build`/`compile`. Rebuild after changes or run `pnpm dev`.
+A spec must import its subject by relative path, not through `@backend/common`: the barrel pulls in `commonConfig`, which validates env at import time.
 
 ## When editing
 

@@ -34,7 +34,7 @@ pnpm format           # prettier src
 pnpm reset            # rm -rf .turbo dist node_modules
 ```
 
-`build` is **cjs-only** (no esm) — backend services are CommonJS — and formats before bundling. Consumers resolve `dist/`; turbo's `^build` rebuilds before downstream `compile`/`build`.
+`build` runs prettier over the generated `src/` before bundling — unusual for this repo, and the reason the output stays readable after a regeneration.
 
 ## Consumers & gotchas
 

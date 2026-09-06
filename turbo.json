@@ -2,7 +2,12 @@
   "$schema": "https://turbo.build/schema.json",
   "concurrency": "10",
   "envMode": "loose",
-  "globalDependencies": ["**/.env"],
+  // `packages/configs/**` is global because its presets are read from outside the packages that
+  // use them: a package `turbo.json` lists its own `tsdown.config.mts` in `inputs`, but that file
+  // is now a one-liner delegating to `@packages/configs/tsdown/package.config.mjs`, whose edits
+  // would otherwise never reach a build hash. The presets change rarely, so the extra
+  // invalidations are cheap.
+  "globalDependencies": ["**/.env", "packages/configs/**"],
   "tasks": {
     "dev": {
       "cache": false,

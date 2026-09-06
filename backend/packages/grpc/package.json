@@ -23,10 +23,12 @@
     "@nestjs/microservices": "11.1.27",
     "@packages/common": "workspace:*",
     "@sweet-monads/either": "3.3.1",
+    "change-case-all": "2.1.0",
     "lodash": "4.18.1",
     "protobufjs": "7.6.3",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@packages/configs": "workspace:*",

@@ -7,6 +7,7 @@
   "scripts": {
     "compile": "tsx compiler/main.ts",
     "check": "tsx compiler/main.ts --check",
+    "typecheck": "tsc --noEmit",
     "format": "prettier compiler --write --config ../../.prettierrc",
     "reset": "rm -rf .turbo node_modules",
     "reset:modules": "rm -rf node_modules"
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@packages/configs": "workspace:*",
     "ts-morph": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

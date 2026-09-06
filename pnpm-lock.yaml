@@ -129,6 +129,9 @@ catalogs:
     tsx:
       specifier: 4.22.4
       version: 4.22.4
+    typescript:
+      specifier: 5.9.3
+      version: 5.9.3
     ulid:
       specifier: 3.0.2
       version: 3.0.2
@@ -178,7 +181,7 @@ importers:
         specifier: 2.10.2
         version: 2.10.2
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
 
   backend/apps/api-gateway:
@@ -1244,6 +1247,9 @@ importers:
       tsx:
         specifier: 'catalog:'
         version: 4.22.4
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/proto:
     devDependencies:

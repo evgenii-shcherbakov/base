@@ -61,6 +61,7 @@ pnpm build                    # build everything (runs ^compile then ^build)
 pnpm build:backend.auth       # one service
 pnpm test                     # unit suites of every package that has them
 pnpm test:e2e                 # e2e suites; each skips itself when its server is unreachable
+pnpm typecheck                # only where no build already type-checks (today: @packages/env-docs)
 pnpm lint                     # eslint --fix across workspaces
 pnpm format                   # prettier
 pnpm docker:local             # postgres + redis only (for local dev against real infra)
@@ -98,6 +99,7 @@ run green — **drop the flag from a service the moment it gets its first spec.*
 - The one substantive rule it enforces is `import-x/no-extraneous-dependencies`: a package must declare what it imports, and `src/` may not use devDependencies. The admin's `nextConfig` carries it too.
 - No ESLint config at all: `@packages/{common,proto,compiler-utils,configs}`, `@backend/proto`, `@frontend/proto`.
 - TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin, **off** for backend apps and `@backend/packages/*`.
+- A package whose code is only ever run through `tsx` — a compiler, not a build — has its types checked by nothing until it declares a `typecheck` task. `@packages/env-docs` is the one that does; add the task rather than assuming `compile` covers it.
 
 ## Code navigation (LSP vs grep)
 

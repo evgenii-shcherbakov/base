@@ -35,6 +35,12 @@
       "env": ["NODE_ENV", "PORT", "REDIS_*", "NATS_*"],
       "dependsOn": ["^build"]
     },
+    // Cacheable, unlike lint and format: it writes nothing and is a pure function of the sources
+    // turbo already hashes. Only workspaces whose code no build step type-checks need it — a
+    // package whose `build` runs tsc or tsdown is checked there.
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
     "test:e2e": {
       // Whether the suite runs or skips depends on a broker being reachable, which is not an
       // input turbo can hash — a cached result would replay the wrong verdict.

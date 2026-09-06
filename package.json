@@ -32,6 +32,7 @@
     "prod:backend.storage": "turbo run prod --filter=backend.storage",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
+    "typecheck": "turbo run typecheck",
     "format": "turbo run format",
     "lint": "turbo run lint",
     "gen:package": "turbo gen package && pnpm install",
@@ -52,7 +53,7 @@
     "prettier": "catalog:",
     "tsdown": "catalog:",
     "turbo": "2.10.2",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   },
   "engines": {
     "node": ">=22.22.0"

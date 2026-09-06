@@ -21,7 +21,12 @@ presets.
 ```bash
 pnpm compile:env-docs     # rewrite every marked region (from the repo root)
 pnpm check:env-docs       # fail if a region is stale; what the docs hook runs
+pnpm typecheck --filter=@packages/env-docs
 ```
+
+`typecheck` is not ceremony: `compile` runs through `tsx`, which strips types without checking
+them, and there is no `build` to check them either — so nothing here reports a type error unless
+`tsc` is run on purpose. It found one the day it was added.
 
 ## How a document opts in
 

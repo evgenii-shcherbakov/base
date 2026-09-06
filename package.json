@@ -41,13 +41,6 @@
     "docker:local:d": "docker compose -f docker-compose.yml --profile local up --build -d",
     "docker": "docker compose -f docker-compose.yml --profile all up --build"
   },
-  "dependencies": {
-    "change-case-all": "2.1.0",
-    "lodash": "4.18.1",
-    "moment": "2.30.1",
-    "ulid": "3.0.2",
-    "zod": "4.4.3"
-  },
   "devDependencies": {
     "@turbo/gen": "2.10.2",
     "@types/lodash": "4.17.24",

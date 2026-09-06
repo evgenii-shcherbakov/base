@@ -37,7 +37,7 @@ There is **no `grpc-access` module** — authorization is the global `CommonModu
 
 ## Config / commands
 
-`config.ts` is just `commonConfig()`; JWT verification has its own `common/infrastructure/configs/jwt.config.ts`. Env: `PORT`, `API_GATEWAY_GRPC_URL`, `AUTH_GRPC_URL`, `STORAGE_GRPC_URL` (the three `*_GRPC_URL` drive the `@backend/grpc` topology), `JWT_ACCESS_PUBLIC_KEY_BASE64` (base64-encoded RSA public PEM, must match the private key in `backend.auth`). No DB, no migrator, no event-bus vars — this service publishes and consumes no domain events.
+`config.ts` is just `commonConfig()`; JWT verification has its own `common/infrastructure/configs/jwt.config.ts`, whose `JWT_ACCESS_PUBLIC_KEY_BASE64` is the only env this service owns — it verifies access tokens but cannot issue them. The three `*_GRPC_URL` come from `@backend/grpc`. No DB, no migrator, no event-bus vars — this service publishes and consumes no domain events. Full list: [docs/env.md](../../../docs/env.md).
 
 ```bash
 pnpm start:dev        # dotenv → nest start --watch service

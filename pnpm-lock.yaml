@@ -1233,6 +1233,18 @@ importers:
         specifier: 8.50.0
         version: 8.50.0(eslint@9.39.2)(typescript@5.9.3)
 
+  packages/env-docs:
+    devDependencies:
+      '@packages/configs':
+        specifier: workspace:*
+        version: link:../configs
+      ts-morph:
+        specifier: 'catalog:'
+        version: 28.0.0
+      tsx:
+        specifier: 'catalog:'
+        version: 4.22.4
+
   packages/proto:
     devDependencies:
       '@grpc/grpc-js':

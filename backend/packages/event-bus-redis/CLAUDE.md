@@ -154,17 +154,10 @@ the interceptor's observable. Both use `resolveErrorMessage()` from `@backend/co
 
 ## Env
 
-`REDIS_URL` (default `redis://localhost:6379`), `REDIS_QUEUE_PREFIX` (`bull`),
-`REDIS_WORKER_CONCURRENCY` (`1`), `REDIS_EVENT_BUS_NAMESPACE` (`event-bus`), `REDIS_IP_FAMILY` (`0`),
-`REDIS_PARKING_MAX_LENGTH` (`1000`, `0` disables parking), `REDIS_PARKING_TTL` (`86400`),
-`REDIS_JOB_ATTEMPTS` (`10`), `REDIS_JOB_BACKOFF_DELAY` (`1000`). Authoritative list:
-`src/infrastructure/configs/redis.config.ts`.
-
-The parking bounds mirror the job retention (`count` of `removeOnComplete`, `age` of `removeOnFail`).
-`REDIS_IP_FAMILY` is the ioredis `family` option — `0` dual stack, `4` IPv4, `6` IPv6. It defaults to
-dual stack because managed private networks are often IPv6-only (Railway's `*.railway.internal`),
-where ioredis' default A-record lookup fails with `ENOTFOUND`. Force `6` if reconnects turn out flaky
-on such a network.
+`src/infrastructure/configs/redis.config.ts` owns every default; the nine `REDIS_*` variables are
+tabulated and explained in [docs/env.md](../../../docs/env.md). Two behaviours worth knowing here:
+`REDIS_PARKING_MAX_LENGTH=0` disables parking, and `REDIS_IP_FAMILY` exists because managed private
+networks are often IPv6-only.
 
 ## Commands & gotchas
 

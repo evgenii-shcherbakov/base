@@ -41,7 +41,7 @@ The `file`/`image`/`video` resources are registered in `app/layout.tsx` with `da
 
 ## Config & commands
 
-`config.service` reads env: `BACKEND_GRPC_URL` (api-gateway), `DEFAULT_EMAIL` / `DEFAULT_PASSWORD`, `CHUNK_SIZE_MB`, `PORT`, `HOSTNAME`.
+`config.service` validates env through `validateEnv`; that call owns each variable's type and default, and the table in [docs/env.md](../../../docs/env.md) is generated from it — change the schema and run `pnpm compile:env-docs` rather than editing the table. All of it is read on the Next server, so nothing there is a `NEXT_PUBLIC_*`.
 
 ```bash
 pnpm dev              # refine dev (Refine CLI wrapping Next)

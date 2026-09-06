@@ -142,9 +142,8 @@ opt out of the replay.
 
 ## Env
 
-`NATS_URL` (default `nats://localhost:4222`), `NATS_ACK_WAIT_MS` (30000), `NATS_MAX_DELIVER` (10),
-`NATS_CONSUMER_CONCURRENCY` (1), `NATS_DELIVER_POLICY` (`all` | `new`, default `all`).
-Authoritative list: `src/infrastructure/configs/nats.config.ts`.
+`src/infrastructure/configs/nats.config.ts` owns every default; the five `NATS_*` variables are
+tabulated in [docs/env.md](../../../docs/env.md).
 
 ## Commands & gotchas
 

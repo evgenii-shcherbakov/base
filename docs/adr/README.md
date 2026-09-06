@@ -34,3 +34,4 @@ template, updates this index, and links the ADR from the owning `CLAUDE.md`.
 | [0005](0005-parking-unrouted-events.md) | Unrouted events are parked, not dropped | Accepted | `@backend/event-bus-redis` |
 | [0006](0006-consumer-scoped-subscriptions.md) | Subscriptions are scoped by a consumer id | Accepted | `@backend/event-bus-redis`, `@backend/event-bus-nats` |
 | [0007](0007-natsjs-v3-direct.md) | Sit directly on the nats.js v3 client, drop the wrapper library | Accepted | `@backend/event-bus-nats` |
+| [0008](0008-generated-env-tables.md) | Env tables are generated from the zod schemas | Accepted | `@packages/env-docs`, `docs/env.md` |

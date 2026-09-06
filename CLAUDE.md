@@ -74,6 +74,8 @@ pnpm gen:package              # scaffold a new package via turbo generator (pack
 ```bash
 pnpm compile:proto            # .proto → @backend/proto, @frontend/proto, @packages/proto
 pnpm compile:event-bus        # EventBusStrategy → @backend/event-bus + the two transport packages
+pnpm compile:env-docs         # zod env schemas → the env tables in CLAUDE.md files
+pnpm check:env-docs           # the same, read-only: fails when a table is stale
 pnpm compile                  # run every package's compile task
 ```
 
@@ -138,6 +140,21 @@ Three packages, each compiling its own generated code in its own turbo task:
 
 Each package's `CLAUDE.md` covers its internals; the decisions behind the split are ADRs
 [0001](docs/adr/0001-redis-as-live-transport.md)–[0007](docs/adr/0007-natsjs-v3-direct.md).
+
+## Env-table codegen pipeline
+
+A third generator, `@packages/env-docs`, keeps documentation from restating what a zod schema
+already says. Every environment variable is owned by the `validateEnv` argument that declares it,
+and **[docs/env.md](docs/env.md) is the one place the tables live** — read on demand, like
+`docs/adr/`, so no `CLAUDE.md` carries a deployment checklist it would load into every session.
+`pnpm compile:env-docs` rewrites the marked regions there; `pnpm check:env-docs` fails when a table
+and its schema have drifted, and the docs hook runs it on any edit to a file that validates env, to
+a workspace manifest, or to the page itself. Prose around the markers is untouched — the generator
+owns values, hand-written text owns reasons. It also enforces two invariants that fail the build:
+every `validateEnv` call is named by some marker, and the service → packages map on that page
+matches the `workspace:*` dependency closure. The marker syntax and the parser's deliberate
+strictness are in that package's `CLAUDE.md`; the rationale is
+[ADR-0008](docs/adr/0008-generated-env-tables.md).
 
 ## Backend
 

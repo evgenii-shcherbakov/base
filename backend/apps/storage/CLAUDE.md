@@ -23,7 +23,7 @@ The media / file storage microservice, backed by **Bunny CDN**. gRPC host `stora
 
 ## Config / env
 
-`config.ts` is just `commonConfig()`; the Bunny config lives in the storage module. Env: `DATABASE_URL`, `STORAGE_GRPC_URL`, `AUTH_GRPC_URL` (migrator only), `REDIS_URL`, and `BUNNY_STORAGE_*` / `BUNNY_STREAM_*` (API keys, CDN zones, private keys, expiries, stream library id).
+`config.ts` is just `commonConfig()`; the Bunny config lives in the storage module and is the only env this service declares — nine `BUNNY_STORAGE_*` / `BUNNY_STREAM_*` variables, six of them required. Those plus the env of the packages it wires: [docs/env.md](../../../docs/env.md).
 
 ## Commands & gotchas
 

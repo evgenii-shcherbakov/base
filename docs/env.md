@@ -1,0 +1,250 @@
+# Environment variables
+
+Every table below is generated from the `validateEnv` argument named in its marker — the zod schema
+is the owner of a variable's type, default and whether it is required, and this page is a
+projection of it. Run `pnpm compile:env-docs` after changing a schema; `pnpm check:env-docs` fails
+when the two have drifted apart.
+
+Kept out of the `CLAUDE.md` files on purpose. Those are loaded into every session touching their
+directory, and a deployment checklist is not something you reason about while editing code — it is
+looked up, which is what this page is for. The rule is the same one `docs/adr/` follows.
+
+**Reading the tables**
+
+- **required** — the process throws `Env validation failed` at import time when the variable is
+  unset. There is no partial start-up.
+- `—` — optional with no default; the config reads `undefined`.
+- A default is applied only when the variable is **absent**. An empty string is a value, and for a
+  coerced number it is a validation error.
+- Every value arrives as a string, so a numeric or boolean schema must go through `zod.coerce`.
+  `pnpm check:env-docs` rejects one that does not.
+
+**What a service needs** is its own section plus the sections of the packages it wires. That map is
+read off the workspace manifests, not maintained here:
+
+<!-- env-services:start -->
+
+| Service               | Packages                                                                      |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `backend.api-gateway` | `@backend/common`, `@backend/grpc`                                            |
+| `backend.auth`        | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
+| `backend.storage`     | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
+| `frontend.admin`      | —                                                                             |
+
+`@backend/event-bus-nats` and `@backend/mongo` declare environment no service wires.
+
+<!-- env-services:end -->
+
+---
+
+## Shared shapes — `@packages/common`
+
+Spread into other packages' `validateEnv` calls rather than redeclared, so a variable that several
+packages validate is still written down once.
+
+### `NodeValidationSchema`
+
+<!-- env-table:start src=packages/common/src/validation/common.validation.ts#NodeValidationSchema -->
+
+| Variable   | Type                                    | Default |
+| ---------- | --------------------------------------- | ------- |
+| `PORT`     | number                                  | —       |
+| `NODE_ENV` | `development` \| `production` \| `test` | —       |
+
+<!-- env-table:end -->
+
+`NODE_ENV` accepts `test` only so a jest spec that transitively imports a config module does not die
+at import time; consumers compare it against `development` / `production` alone. `PORT` falls back
+to `10000` in `commonConfig()` rather than in the schema.
+
+### `DatabaseValidationSchema`
+
+<!-- env-table:start src=packages/common/src/validation/common.validation.ts#DatabaseValidationSchema -->
+
+| Variable       | Type   | Default      |
+| -------------- | ------ | ------------ |
+| `DATABASE_URL` | string | **required** |
+
+<!-- env-table:end -->
+
+`DATABASE_URL` names a Postgres URL for `@backend/pg` and a Mongo URL for `@backend/mongo` — one
+more reason the two adapters are never wired at once.
+
+---
+
+## Packages
+
+### `@backend/common`
+
+<!-- env-table:start src=backend/packages/common/src/common/infrastructure/configs/common.config.ts -->
+
+Nothing of its own — the shared shape `NodeValidationSchema` from `@packages/common`, tabulated under *Shared shapes*.
+
+<!-- env-table:end -->
+
+### `@backend/pg`
+
+<!-- env-table:start src=backend/packages/pg/src/core/infrastructure/configs/pg.config.ts -->
+
+Nothing of its own — the shared shapes `NodeValidationSchema` and `DatabaseValidationSchema` from `@packages/common`, tabulated under *Shared shapes*.
+
+<!-- env-table:end -->
+
+`NODE_ENV` decides one thing here: outside `production` the MikroORM migrator also gets `pathTs`, so
+a migration can be run from source.
+
+### `@backend/mongo`
+
+<!-- env-table:start src=backend/packages/mongo/src/core/infrastructure/configs/mongo.config.ts -->
+
+Nothing of its own — the shared shape `DatabaseValidationSchema` from `@packages/common`, tabulated under *Shared shapes*.
+
+<!-- env-table:end -->
+
+Read with a `mongodb://localhost:27017` fallback at the call site, so the package tolerates an unset
+`DATABASE_URL` where `@backend/pg` does not.
+
+### `@backend/grpc`
+
+<!-- env-table:start src=backend/packages/grpc/src/infrastructure/configs/grpc.config.ts -->
+
+| Variable               | Type   | Default        |
+| ---------------------- | ------ | -------------- |
+| `API_GATEWAY_GRPC_URL` | string | `0.0.0.0:8000` |
+| `AUTH_GRPC_URL`        | string | `0.0.0.0:8001` |
+| `STORAGE_GRPC_URL`     | string | `0.0.0.0:8002` |
+
+<!-- env-table:end -->
+
+All three are validated in every process that imports the package, whichever host it is — the
+topology map is built whole. A service only ever dials the URLs it has a client for. Adding a host
+means editing `grpcConfig` **and** adding the variable.
+
+### `@backend/event-bus-redis`
+
+<!-- env-table:start src=backend/packages/event-bus-redis/src/infrastructure/configs/redis.config.ts -->
+
+| Variable                    | Type                        | Default                  |
+| --------------------------- | --------------------------- | ------------------------ |
+| `REDIS_URL`                 | string                      | `redis://localhost:6379` |
+| `REDIS_QUEUE_PREFIX`        | string                      | `bull`                   |
+| `REDIS_WORKER_CONCURRENCY`  | integer > 0                 | `1`                      |
+| `REDIS_JOB_ATTEMPTS`        | integer > 0                 | `10`                     |
+| `REDIS_JOB_BACKOFF_DELAY`   | integer > 0                 | `1000`                   |
+| `REDIS_EVENT_BUS_NAMESPACE` | string                      | `event-bus`              |
+| `REDIS_PARKING_MAX_LENGTH`  | integer ≥ 0                 | `1000`                   |
+| `REDIS_PARKING_TTL`         | integer > 0                 | `86400`                  |
+| `REDIS_IP_FAMILY`           | integer (must be 0, 4 or 6) | `0`                      |
+
+<!-- env-table:end -->
+
+The parking bounds mirror the job retention (`count` of `removeOnComplete`, `age` of
+`removeOnFail`); `REDIS_PARKING_MAX_LENGTH=0` disables parking altogether.
+
+`REDIS_IP_FAMILY` is the ioredis `family` option — `0` dual stack, `4` IPv4, `6` IPv6. It defaults to
+dual stack because managed private networks are often IPv6-only (Railway's `*.railway.internal`),
+where ioredis' default A-record lookup fails with `ENOTFOUND`. Force `6` if reconnects turn out
+flaky on such a network.
+
+The e2e suite pins `REDIS_QUEUE_PREFIX=bull-e2e`, `REDIS_EVENT_BUS_NAMESPACE=event-bus-e2e` and a
+short retry ladder from a jest `globalSetup` — the config validates env at module load, so an
+override set any later would be read by nobody.
+
+### `@backend/event-bus-nats`
+
+<!-- env-table:start src=backend/packages/event-bus-nats/src/infrastructure/configs/nats.config.ts -->
+
+| Variable                    | Type           | Default                 |
+| --------------------------- | -------------- | ----------------------- |
+| `NATS_URL`                  | string         | `nats://localhost:4222` |
+| `NATS_ACK_WAIT_MS`          | integer > 0    | `30000`                 |
+| `NATS_MAX_DELIVER`          | integer > 0    | `10`                    |
+| `NATS_CONSUMER_CONCURRENCY` | integer > 0    | `1`                     |
+| `NATS_DELIVER_POLICY`       | `all` \| `new` | `all`                   |
+
+<!-- env-table:end -->
+
+`NATS_DELIVER_POLICY=all` replays a stream from the beginning the first time a durable is created,
+so a subscriber added later still sees what it missed; `new` opts out.
+
+---
+
+## Services
+
+### `backend.auth`
+
+<!-- env-table:start src=backend/apps/auth/src/config.ts,backend/apps/auth/src/modules/auth/infrastructure/configs/jwt.config.ts,backend/apps/auth/src/modules/crypto/infrastructure/configs/bcrypt.config.ts -->
+
+| Variable                        | Type        | Default      | Source             |
+| ------------------------------- | ----------- | ------------ | ------------------ |
+| `ADMIN_EMAIL`                   | email       | **required** | `config.ts`        |
+| `ADMIN_PASSWORD`                | string      | **required** | `config.ts`        |
+| `TEMP_TOKEN_EXPIRES_IN_MINUTES` | number      | `1`          | `config.ts`        |
+| `JWT_ACCESS_PRIVATE_KEY_BASE64` | string      | **required** | `jwt.config.ts`    |
+| `JWT_ACCESS_PUBLIC_KEY_BASE64`  | string      | **required** | `jwt.config.ts`    |
+| `REFRESH_JWT_SECRET`            | string      | **required** | `jwt.config.ts`    |
+| `SALT_ROUNDS`                   | integer > 0 | `10`         | `bcrypt.config.ts` |
+
+<!-- env-table:end -->
+
+`JWT_ACCESS_PRIVATE_KEY_BASE64` / `JWT_ACCESS_PUBLIC_KEY_BASE64` hold a base64-encoded RSA PEM pair,
+decoded via `decodeBase64Pem` — a multi-line PEM does not survive `.env`, docker-compose or Railway.
+The public half must match the one `backend.api-gateway` verifies with. `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` seed the first login through the migrator's `create-admin` task.
+
+### `backend.storage`
+
+<!-- env-table:start src=backend/apps/storage/src/modules/storage/infrastructure/configs/bunny.storage.config.ts -->
+
+| Variable                               | Type   | Default      |
+| -------------------------------------- | ------ | ------------ |
+| `BUNNY_STORAGE_API_KEY`                | string | **required** |
+| `BUNNY_STORAGE_CDN_ZONE`               | string | **required** |
+| `BUNNY_STORAGE_CDN_PRIVATE_KEY`        | string | **required** |
+| `BUNNY_STORAGE_CDN_EXPIRES_IN_MINUTES` | number | `10`         |
+| `BUNNY_STREAM_API_KEY`                 | string | **required** |
+| `BUNNY_STREAM_LIBRARY_ID`              | string | **required** |
+| `BUNNY_STREAM_CDN_ZONE`                | string | **required** |
+| `BUNNY_STREAM_CDN_PRIVATE_KEY`         | string | **required** |
+| `BUNNY_STREAM_CDN_EXPIRES_IN_MINUTES`  | number | `60`         |
+
+<!-- env-table:end -->
+
+Two Bunny products, credentialed separately: **Storage** (files) and **Stream** (video). The CDN
+private keys sign time-limited URLs, expiring after the matching `*_EXPIRES_IN_MINUTES`.
+`AUTH_GRPC_URL` is set for this service even though the runtime never calls auth — the migrator's
+`create-root-folders` task talks to it over gRPC.
+
+### `backend.api-gateway`
+
+<!-- env-table:start src=backend/apps/api-gateway/src/common/infrastructure/configs/jwt.config.ts -->
+
+| Variable                       | Type   | Default      |
+| ------------------------------ | ------ | ------------ |
+| `JWT_ACCESS_PUBLIC_KEY_BASE64` | string | **required** |
+
+<!-- env-table:end -->
+
+The **public** half of the auth service's RSA pair: the gateway verifies access tokens locally but
+cannot issue them. No database, no migrator, no event-bus variables — it publishes and consumes no
+domain events.
+
+### `frontend.admin`
+
+<!-- env-table:start src=frontend/apps/admin/src/common/services/config.service.ts -->
+
+| Variable           | Type   | Default           |
+| ------------------ | ------ | ----------------- |
+| `BACKEND_GRPC_URL` | string | `0.0.0.0:8000`    |
+| `DEFAULT_EMAIL`    | email  | `admin@gmail.com` |
+| `DEFAULT_PASSWORD` | string | `string123`       |
+| `CHUNK_SIZE_MB`    | number | `1`               |
+
+Plus the shared shape `NodeValidationSchema` from `@packages/common`, tabulated under *Shared shapes*.
+
+<!-- env-table:end -->
+
+Read by `ConfigService` on the **Next server**, never in the browser — none of them is a
+`NEXT_PUBLIC_*`, and `BACKEND_GRPC_URL` must not become one: `@grpc/grpc-js` is a Node client and
+the gRPC call runs in a server action. `DEFAULT_EMAIL` / `DEFAULT_PASSWORD` prefill the login form
+and are read only while `NODE_ENV` is `development`. `CHUNK_SIZE_MB` sizes the chunked upload.

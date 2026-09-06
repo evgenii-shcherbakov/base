@@ -19,7 +19,7 @@ Separate Nest app via `PgMigrationModule.register` (entities `PgUserEntity`, `Pg
 
 ## Config & env (`src/config.ts`)
 
-Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. Env: `DATABASE_URL`, `AUTH_GRPC_URL`, `REDIS_URL`, `JWT_ACCESS_PRIVATE_KEY_BASE64`, `JWT_ACCESS_PUBLIC_KEY_BASE64`, `REFRESH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`. The two key vars hold a base64-encoded RSA PEM pair (decoded via `decodeBase64Pem`) — multi-line PEM does not survive `.env` / docker-compose / Railway.
+Spreads `commonConfig()` and adds `admin.{email,password}` + `tempCode.expiresInMinutes`. This service declares `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `TEMP_TOKEN_EXPIRES_IN_MINUTES`, the two `JWT_ACCESS_*_KEY_BASE64` halves, `REFRESH_JWT_SECRET` and `SALT_ROUNDS`; the packages it wires add their own. Types, defaults and what a deployment must set: [docs/env.md](../../../docs/env.md).
 
 ## Commands
 

@@ -1,0 +1,36 @@
+# Architecture Decision Records
+
+Dated records of *why* a structural decision was made. They are the counterpart to `CLAUDE.md`
+files, and the split is strict:
+
+| | `CLAUDE.md` | `docs/adr/` |
+|---|---|---|
+| Answers | *what is true now, what to do* | *why it was decided, what was traded away* |
+| Lifetime | rewritten whenever reality changes | **immutable once merged** |
+| Loading | pulled into context automatically | read on demand, via a link from the owning `CLAUDE.md` |
+
+## Rules
+
+- **An ADR is never edited after it lands** (typos aside). A decision that changes gets a *new*
+  ADR with `Supersedes 000N` in its status; the old one is amended with `Superseded by 000M` —
+  that one-line status edit is the only permitted change.
+- **One owner per fact.** If a rationale lives here, the `CLAUDE.md` that owns the corresponding
+  rule carries the rule plus a link — not a summary of the reasoning.
+- **Numbering is sequential and never reused**, even if an ADR is superseded or rejected.
+- Format is MADR-lite: `Status` / `Context` / `Decision` / `Consequences`, plus an
+  `**Applies to:**` line naming the packages it governs.
+
+Use the `/adr` skill (`.claude/skills/adr/`) to add one — it picks the next number, fills the
+template, updates this index, and links the ADR from the owning `CLAUDE.md`.
+
+## Index
+
+| # | Title | Status | Applies to |
+|---|---|---|---|
+| [0001](0001-redis-as-live-transport.md) | Redis/BullMQ is the live event-bus transport, NATS stays dormant | Accepted | `@backend/event-bus-redis`, `@backend/event-bus-nats` |
+| [0002](0002-codegen-task-per-package.md) | One event-bus codegen task per target package | Accepted | `@backend/event-bus*` |
+| [0003](0003-service-scoped-naming.md) | Generated event-bus names are service-scoped, not host-scoped | Accepted | `@backend/event-bus*` |
+| [0004](0004-redis-mediator-fan-out.md) | Redis fans out through a mediator; NATS needs none | Accepted | `@backend/event-bus-redis`, `@backend/event-bus-nats` |
+| [0005](0005-parking-unrouted-events.md) | Unrouted events are parked, not dropped | Accepted | `@backend/event-bus-redis` |
+| [0006](0006-consumer-scoped-subscriptions.md) | Subscriptions are scoped by a consumer id | Accepted | `@backend/event-bus-redis`, `@backend/event-bus-nats` |
+| [0007](0007-natsjs-v3-direct.md) | Sit directly on the nats.js v3 client, drop the wrapper library | Accepted | `@backend/event-bus-nats` |

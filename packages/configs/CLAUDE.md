@@ -4,7 +4,9 @@ Guidance for working inside `packages/configs`. For monorepo-wide conventions (w
 
 ## What this is
 
-Centralized **ESLint** (flat config, factory functions) and **tsconfig** presets for every workspace. There is no build: no `src`, no `dist`, no runtime output — just config files. Consumers wire them directly (`extends` for tsconfig, `import` a factory for eslint), so editing a preset affects everyone at once.
+Centralized **ESLint** (flat config, factory functions), **tsconfig** and **tsdown** presets for every workspace. There is no build: no `src`, no `dist`, no runtime output — just config files. Consumers wire them directly (`extends` for tsconfig, `import` a factory for eslint and tsdown), so editing a preset affects everyone at once.
+
+Because the presets are read from outside the packages that use them, `packages/configs/**` is listed in the root `turbo.json` `globalDependencies` — otherwise an edit here would never reach a build hash.
 
 ## tsconfig presets (`tsconfig/`)
 
@@ -24,12 +26,40 @@ Gotcha: backend configs are intentionally non-strict (`strict` off), even though
 
 Both enable `prettier/prettier: 'error'`. The nest preset runs in type-checked mode but deliberately **disables** most unsafe rules (`no-explicit-any`, `no-floating-promises`, `no-unused-vars`, `unbound-method`, `no-unsafe-*`). So the linter does NOT catch those classes of errors.
 
+The one rule it does enforce beyond formatting is **`import-x/no-extraneous-dependencies`** (`eslint-plugin-import-x`, wired rule-by-rule rather than via `flatConfigs.recommended`, which would also switch on `no-unresolved`): a package must declare what it imports, and `src/` may not reach into devDependencies (`compiler/`, `test/` and specs may). It is the lint-side counterpart of the tsdown factory — see the section above for what an undeclared import costs.
+
+Two things it needs to work here:
+- **`eslint-import-resolver-typescript` is required, not an optimisation.** `@modules/…`, `@common/…` and `@compiler/…` are tsconfig path aliases that match the scoped-package pattern; unresolved, every one of the ~400 such imports reads as an undeclared external package.
+- **Type-only imports of a `@types/*` package must say `import type`.** A plain `import { Request } from 'express'` in `api-gateway` resolves to `@types/express` in devDependencies and is reported; `import type` is skipped (`includeTypes` is left at its default) and is the correct form anyway.
+
+It reaches the three backend apps and the seven `@backend/packages/*` — everything wired to `nestConfig`. `@packages/{common,proto,compiler-utils}`, `@backend/proto` and `@frontend/proto` have no `eslint.config.mjs` at all, so they are **not** covered; their dependencies are kept correct by hand.
+
 Wiring in a consumer:
 ```js
 // backend/*/eslint.config.mjs
 import nestConfig from '@packages/configs/eslint/nest.config.mjs';
 export default nestConfig(import.meta.url);
 ```
+
+## tsdown preset (`tsdown/package.config.mjs`)
+
+`nodePackageConfig(import.meta.url, overrides?)` — the single build config for every package that ships a `dist/`. Same shape as `nestConfig`: the argument is **required**, because the factory turns it into the caller's directory and reads the `package.json` sitting next to it.
+
+That manifest is the whole point. Externals (`deps.neverBundle`) come from the **package's own** dependencies + devDependencies + peerDependencies. Each config used to read the *root* manifest instead, which silently let a package import something it never declared — `@backend/pg` reached for `ulid` and `change-case-all` that way. Such an import breaks under a non-hoisting node-linker and, now that the factory reads the local manifest, gets **bundled into `dist/`** instead: dropping `zod` from `@backend/grpc` grows its bundle from 20 KB to 468 KB. `import-x/no-extraneous-dependencies` (below) is the lint-side half of the same rule.
+
+```ts
+// backend/*/tsdown.config.mts — the common case
+import nodePackageConfig from '@packages/configs/tsdown/package.config.mjs';
+
+export default nodePackageConfig(import.meta.url);
+```
+
+Defaults are `entry: 'src/index.ts'`, `format: ['cjs']`, `dts: true`. `overrides` is merged over them (`deps` merges by key), which covers the two packages that need more:
+
+- `@packages/*` and `@frontend/proto` pass `{ format: ['esm', 'cjs'] }`.
+- `@backend/event-bus` passes named entries for its second, build-time `compiler` entrypoint.
+
+A package that needs an external the factory cannot see is a package with an undeclared dependency — declare it in its `package.json` rather than hand-adding to `neverBundle`.
 
 ## Layer-direction guard (`eslint/layer-guard.mjs`)
 

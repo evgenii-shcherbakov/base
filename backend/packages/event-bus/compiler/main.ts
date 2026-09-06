@@ -1,5 +1,6 @@
 import { EVENT_BUS_OUTPUT_PATH } from '@compiler/constants';
-import { createCompilerContext, EventBusService } from '@compiler/services';
+import { PortsEmitter } from '@compiler/emitters/ports.emitter';
+import { parseStrategy } from '@compiler/strategy';
 
 /**
  * Emits this package's own half of the codegen: the abstract `<Service>EventBus` classes and
@@ -8,10 +9,10 @@ import { createCompilerContext, EventBusService } from '@compiler/services';
  */
 const compile = async () => {
   try {
-    const { project, contextService, services } = createCompilerContext();
+    const { project, context, services } = parseStrategy();
 
-    const eventBusService = new EventBusService(project, contextService, EVENT_BUS_OUTPUT_PATH);
-    await eventBusService.compile(services);
+    const portsEmitter = new PortsEmitter(project, context, EVENT_BUS_OUTPUT_PATH);
+    await portsEmitter.compile(services);
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message, error.stack);

@@ -1,8 +1,9 @@
 import { camelCase, constantCase, dotCase, pascalCase } from 'change-case-all';
 import { Node } from 'ts-morph';
-import { ContextService } from './context.service';
+import { StrategyContext } from './context';
 
-export type EventBusMethod = {
+/** One event of one service, with every name the emitters generate for it. */
+export type EventModel = {
   emitterName: string;
   emitterManyName: string;
   handlerName: string;
@@ -13,18 +14,22 @@ export type EventBusMethod = {
   eventId: string;
 };
 
-export type ServiceEventBus = {
+/**
+ * One service of the strategy, parsed. Not to be confused with the runtime
+ * `<Service>EventBus` classes this model is used to generate.
+ */
+export type ServiceModel = {
   id: string;
   hostName: string;
   transportName: string;
   patternName: string;
   controllerName: string;
   eventBusName: string;
-  methods: EventBusMethod[];
+  methods: EventModel[];
 };
 
-export class ParseStrategyService {
-  constructor(protected readonly contextService: ContextService) {}
+export class StrategyParser {
+  constructor(protected readonly context: StrategyContext) {}
 
   protected getServiceTransportName(serviceId: string): string {
     return pascalCase(`${serviceId}.transport`);
@@ -67,10 +72,10 @@ export class ParseStrategyService {
   }
 
   getServices() {
-    const strategyFile = this.contextService.getStrategyFile();
+    const strategyFile = this.context.getStrategyFile();
     const strategy = strategyFile.getInterfaceOrThrow('EventBusStrategy');
 
-    const services: ServiceEventBus[] = [];
+    const services: ServiceModel[] = [];
 
     for (const host of strategy.getProperties()) {
       const hostName = host.getName();
@@ -95,7 +100,7 @@ export class ParseStrategyService {
             }
 
             const serviceId = dotCase(serviceName);
-            const methods: EventBusMethod[] = [];
+            const methods: EventModel[] = [];
 
             for (const event of serviceProperties) {
               const eventName = event.getName();
@@ -114,7 +119,7 @@ export class ParseStrategyService {
               });
             }
 
-            const serviceEventBus: ServiceEventBus = {
+            const serviceModel: ServiceModel = {
               id: serviceId,
               transportName: this.getServiceTransportName(serviceId),
               patternName: this.getServicePatternName(serviceId),
@@ -124,7 +129,7 @@ export class ParseStrategyService {
               methods,
             };
 
-            services.push(serviceEventBus);
+            services.push(serviceModel);
           }
         }
       }

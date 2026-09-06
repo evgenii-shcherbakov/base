@@ -1,31 +1,31 @@
-import { ContextService, ServiceEventBus } from '@compiler/services';
+import { ServiceModel, StrategyContext } from '@compiler/strategy';
 import { FormatService, ImportService, TemplateService } from '@packages/compiler-utils';
 import { mkdir, writeFile } from 'fs/promises';
 import { dirname } from 'path';
 import { Project, SourceFile } from 'ts-morph';
 
-export type AdapterParams = {
+export type EventBusAdapterParams = {
   name: string;
   outputPath: string;
   templatePath?: string;
 };
 
-export type AdapterClass = {
+type EventBusAdapterClass = {
   new (
-    contextService: ContextService,
-    services: ServiceEventBus[],
+    context: StrategyContext,
+    services: ServiceModel[],
     name: string,
     outputPath: string,
     templatePath?: string,
-  ): BaseAdapter;
+  ): EventBusAdapter;
 };
 
-export type AdapterFactory = (
-  contextService: ContextService,
-  services: ServiceEventBus[],
-) => BaseAdapter;
+export type EventBusAdapterFactory = (
+  context: StrategyContext,
+  services: ServiceModel[],
+) => EventBusAdapter;
 
-export abstract class BaseAdapter {
+export abstract class EventBusAdapter {
   protected readonly project: Project;
   protected readonly templateService: TemplateService;
   protected readonly formatService = new FormatService();
@@ -33,8 +33,8 @@ export abstract class BaseAdapter {
   protected importService: ImportService;
 
   protected constructor(
-    protected readonly contextService: ContextService,
-    protected readonly services: ServiceEventBus[],
+    protected readonly context: StrategyContext,
+    protected readonly services: ServiceModel[],
     protected readonly name: string,
     protected readonly outputPath: string,
     protected readonly templatePath?: string,
@@ -52,14 +52,14 @@ export abstract class BaseAdapter {
     });
   }
 
-  static createFactory<Adapter extends typeof BaseAdapter>(
+  static createFactory<Adapter extends typeof EventBusAdapter>(
     this: Adapter,
-    params: AdapterParams,
-  ): AdapterFactory {
-    return (contextService: ContextService, services: ServiceEventBus[]): BaseAdapter => {
-      const Constructor = this as unknown as AdapterClass;
+    params: EventBusAdapterParams,
+  ): EventBusAdapterFactory {
+    return (context: StrategyContext, services: ServiceModel[]): EventBusAdapter => {
+      const Constructor = this as unknown as EventBusAdapterClass;
       return new Constructor(
-        contextService,
+        context,
         services,
         params.name,
         params.outputPath,
@@ -69,7 +69,7 @@ export abstract class BaseAdapter {
   }
 
   async onInit() {
-    // The adapter owns its output file the way `EventBusService` owns the event-bus one:
+    // The adapter owns its output file the way `PortsEmitter` owns the event-bus one:
     // adding a new adapter must not require its `generated/` file to exist beforehand.
     await mkdir(dirname(this.outputPath), { recursive: true });
     await writeFile(this.outputPath, '/* eslint-disable */\n', { encoding: 'utf-8' });
@@ -77,11 +77,11 @@ export abstract class BaseAdapter {
     this.outputFile = this.project.addSourceFileAtPath(this.outputPath);
     this.importService = new ImportService(this.outputFile);
 
-    this.outputFile.addImportDeclarations(this.contextService.getExternalImportStructures());
+    this.outputFile.addImportDeclarations(this.context.getExternalImportStructures());
 
     this.importService.addOrUpdate(
-      this.contextService.getEventBusImportSpecifier(),
-      this.contextService.getEventBusImports(),
+      this.context.getEventBusImportSpecifier(),
+      this.context.getEventBusImports(),
     );
 
     if (this.templatePath) {

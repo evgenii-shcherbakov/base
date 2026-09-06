@@ -1,7 +1,7 @@
-import { BaseAdapter } from '@backend/event-bus/compiler';
+import { EventBusAdapter } from '@backend/event-bus/compiler';
 import { kebabCase, pascalCase } from 'change-case-all';
 
-export class NatsAdapter extends BaseAdapter {
+export class NatsAdapter extends EventBusAdapter {
   private declareImports() {
     this.importService.addOrUpdate('@nestjs/common', ['Abstract', 'applyDecorators', 'Type']);
     this.importService.addOrUpdate('@nestjs/microservices', ['EventPattern']);
@@ -12,7 +12,7 @@ export class NatsAdapter extends BaseAdapter {
     this.importService.addOrUpdate('@/interface/contexts', ['NatsMessageContext']);
 
     this.importService.addOrUpdate(
-      this.contextService.getEventBusImportSpecifier(),
+      this.context.getEventBusImportSpecifier(),
       this.services.map((service) => service.eventBusName).concat(['EventBus']),
     );
   }

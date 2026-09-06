@@ -20,11 +20,11 @@ subscriber/handler interfaces, `NatsClientFactory` and `NATS_HOST_STREAMS`. Ever
 ```
 compiler/
   main.ts           # builds the context, runs the adapter, writes ../src/generated/index.ts
-  nats.adapter.ts   # BaseAdapter subclass: imports, per-service transports, client, registry
+  nats.adapter.ts   # EventBusAdapter subclass: imports, per-service transports, client, registry
   templates/*.pug   # nats.controller / nats.client / nats.registry
 ```
 
-`main.ts` gets `BaseAdapter` and `createCompilerContext()` from `@backend/event-bus/compiler` — the
+`main.ts` gets `EventBusAdapter` and `parseStrategy()` from `@backend/event-bus/compiler` — the
 build-time entrypoint of the ports package — and parses `EventBusStrategy` itself. Nothing is handed
 over from the ports package's own compile: each turbo task is a separate process, so the ~0.5 s parse
 is repeated here in exchange for `pnpm compile` inside this package working on its own.

@@ -31,13 +31,24 @@ consumers only ever reach `.`, so ts-morph and pug stay out of their graph.
 
 ## Compiler — `compiler/` (`pnpm compile`)
 
-`createCompilerContext()` parses `EventBusStrategy` with **ts-morph** (`ContextService` + `ParseStrategyService`) and returns the `ServiceEventBus[]` model every emitter works from. `main.ts` then hands it to `EventBusService`, which writes abstract `<Service>EventBus` classes (`emit<Event>` / `emitMany<Event>`) + the `EventBusHost` enum into **this package's** `src/generated/index.ts`. That is all this package emits.
+The layout follows the pipeline — `strategy → model → adapter → generated`:
 
-The transports are emitted **by the adapter packages themselves**, each in its own turbo `compile` task with its own `compiler/main.ts`, adapter class and pug templates. They import `BaseAdapter` and `createCompilerContext` from `@backend/event-bus/compiler` and write to a path local to themselves, so every task declares the output it actually produces — a cross-package write could not be declared, and the cache would restore an incomplete tree.
+```
+compiler/
+  strategy/context.ts   # StrategyContext — the strategy file's import graph
+  strategy/parser.ts    # StrategyParser → ServiceModel[] / EventModel
+  strategy/index.ts     # parseStrategy() → StrategyModel { project, context, services }
+  adapters/event-bus.adapter.ts   # EventBusAdapter — base class for the transport emitters
+  emitters/ports.emitter.ts       # PortsEmitter — this package's own output
+```
+
+`parseStrategy()` parses `EventBusStrategy` with **ts-morph** and returns the `ServiceModel[]` every emitter works from. `main.ts` hands it to `PortsEmitter`, which writes abstract `<Service>EventBus` classes (`emit<Event>` / `emitMany<Event>`) + the `EventBusHost` enum into **this package's** `src/generated/index.ts`. That is all this package emits.
+
+The transports are emitted **by the adapter packages themselves**, each in its own turbo `compile` task with its own `compiler/main.ts`, adapter class and pug templates. They import `EventBusAdapter` and `parseStrategy` from `@backend/event-bus/compiler` and write to a path local to themselves, so every task declares the output it actually produces — a cross-package write could not be declared, and the cache would restore an incomplete tree.
 
 Each task is a separate process, so the strategy is parsed once per task rather than handed between them (~0.5 s each). That keeps `pnpm compile` inside any single package self-contained.
 
-Adding an adapter means a **new package** with a `compiler/` of its own plus the `compile` script and turbo task — no edit here. `BaseAdapter.onInit` creates its output file, so the target package does not need a committed `generated/` stub. Event ids are exposed raw (`method.eventId`, dot-cased `auth.user.create`) — each adapter decides how to shape them: Nats kebab-cases them into subjects, Redis uses them verbatim as queue names.
+Adding an adapter means a **new package** with a `compiler/` of its own plus the `compile` script and turbo task — no edit here. `EventBusAdapter.onInit` creates its output file, so the target package does not need a committed `generated/` stub. Event ids are exposed raw (`method.eventId`, dot-cased `auth.user.create`) — each adapter decides how to shape them: Nats kebab-cases them into subjects, Redis uses them verbatim as queue names.
 
 Both adapters emit a third, host-keyed map alongside the transports and the client factory, for the part of their runtime that is owned by a host rather than by a subscriber: `REDIS_HOST_EVENTS` (host → event ids, read by the mediator) and `NATS_HOST_STREAMS` (host → the streams it owns, read by the stream provisioner). Both come from a `getHosts()` helper on the adapter and a `<name>.registry` template, now living in their own packages.
 
@@ -49,7 +60,11 @@ Re-exports `./generated` (the abstract buses + `EventBusHost`) and `./strategy/e
 
 ## Exports — `compiler/index.ts`
 
-The build-time API the adapter packages compile against: `BaseAdapter` (+ its factory types), `createCompilerContext`, `ContextService`, `ParseStrategyService`, `ServiceEventBus` / `EventBusMethod`, and `EVENT_BUS_IMPORT_SPECIFIER`.
+The build-time API the adapter packages compile against — nine names: `EventBusAdapter` (+ `EventBusAdapterParams` / `EventBusAdapterFactory`), `parseStrategy` (+ `StrategyModel`), `StrategyContext`, `ServiceModel` / `EventModel`, and `EVENT_BUS_IMPORT_SPECIFIER`.
+
+`PortsEmitter`, `StrategyParser` and `EventBusAdapterClass` are deliberately **not** exported: the first is driven only by this package's `main.ts`, the second only through `parseStrategy()`, and the third is plumbing inside `createFactory`. None appears in a public signature, so `dist/compiler.d.cts` still declares them where a type needs them — just not by an exported name.
+
+**The names are chosen to stay apart from two neighbours.** The proto compiler (`packages/proto/compiler/`) has its own private `BaseAdapter`, `ContextService`, `Adapter*` and `CompilerContext` — the last one a `'backend' | 'frontend' | 'all'` union, nothing like the object this package used to call by that name. And `ServiceEventBus` was one keystroke from the runtime `<Service>EventBus` classes it exists to generate, so the parsed model is `ServiceModel`. When adding an export here, check both lists before reaching for a generic name.
 
 Two things this entry constrains:
 - **Paths must be repo-anchored, not `__dirname`-relative.** `compiler/constants` derives them from `BACKEND_PACKAGES_DIR_ROOT` (`@packages/compiler-utils`) because this module is bundled into `dist/compiler.cjs` and read from the adapter packages — a path relative to the emitting file would resolve against `dist/` there.
@@ -73,5 +88,5 @@ From root, `pnpm compile:event-bus` filters `@backend/event-bus*`, which matches
 - A strategy edit invalidates all three `compile` tasks (via the dependency hash), but each writes only its own file. Never hand-edit any `generated/`.
 - An adapter's templates live in **its** package. Editing `event-bus-redis/compiler/templates/*` no longer invalidates the NATS adapter.
 - Fix generated-output bugs in the strategy, the compiler services, or the adapter templates — not the emitted `.ts`.
-- Both writes (`BaseAdapter.run`, `EventBusService.compile`) go through `FormatService` from `@packages/compiler-utils`, so the emitted files are prettier-formatted before they reach disk and the turbo cache. A plain `sourceFile.save()` would reintroduce raw output on cache hits.
+- Both writes (`EventBusAdapter.run`, `PortsEmitter.compile`) go through `FormatService` from `@packages/compiler-utils`, so the emitted files are prettier-formatted before they reach disk and the turbo cache. A plain `sourceFile.save()` would reintroduce raw output on cache hits.
 - cjs-only output; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

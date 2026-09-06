@@ -8,24 +8,28 @@ import {
   Project,
   SourceFile,
 } from 'ts-morph';
-import { ContextService } from './context.service';
-import { ServiceEventBus } from './parse-strategy.service';
+import { ServiceModel, StrategyContext } from '@compiler/strategy';
 
-export class EventBusService {
+/**
+ * Emits the ports half of the codegen — the abstract `<Service>EventBus` classes and the
+ * `EventBusHost` enum — into this package's own `src/generated/index.ts`. The transports are
+ * emitted by the adapter packages, each through its own `EventBusAdapter` subclass.
+ */
+export class PortsEmitter {
   private readonly formatService = new FormatService();
 
   constructor(
     protected readonly project: Project,
-    private readonly contextService: ContextService,
+    private readonly context: StrategyContext,
     protected readonly eventBusOutputPath: string,
   ) {}
 
   private declareImports(outputFile: SourceFile) {
-    outputFile.addImportDeclarations(this.contextService.getStrategyImportStructures());
+    outputFile.addImportDeclarations(this.context.getStrategyImportStructures());
     return outputFile;
   }
 
-  async compile(services: ServiceEventBus[]) {
+  async compile(services: ServiceModel[]) {
     await writeFile(this.eventBusOutputPath, '/* eslint-disable */\n', { encoding: 'utf-8' });
     const outputFile = this.project.addSourceFileAtPath(this.eventBusOutputPath);
 

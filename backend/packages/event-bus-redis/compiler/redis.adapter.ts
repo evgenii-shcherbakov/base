@@ -1,7 +1,7 @@
-import { BaseAdapter } from '@backend/event-bus/compiler';
+import { EventBusAdapter } from '@backend/event-bus/compiler';
 import { pascalCase } from 'change-case-all';
 
-export class RedisAdapter extends BaseAdapter {
+export class RedisAdapter extends EventBusAdapter {
   private declareImports() {
     this.importService.addOrUpdate('@nestjs/common', ['Abstract', 'applyDecorators', 'Type']);
     this.importService.addOrUpdate('@nestjs/microservices', ['EventPattern']);
@@ -10,7 +10,7 @@ export class RedisAdapter extends BaseAdapter {
     this.importService.addOrUpdate('@/interface/contexts', ['RedisJobContext']);
 
     this.importService.addOrUpdate(
-      this.contextService.getEventBusImportSpecifier(),
+      this.context.getEventBusImportSpecifier(),
       this.services.map((service) => service.eventBusName).concat(['EventBus']),
     );
   }

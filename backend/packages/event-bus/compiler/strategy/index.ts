@@ -1,12 +1,15 @@
 import { EVENT_BUS_IMPORT_SPECIFIER, STRATEGY_FILE_PATH, STRATEGY_ROOT } from '@compiler/constants';
 import { Project } from 'ts-morph';
-import { ContextService } from './context.service';
-import { ParseStrategyService, ServiceEventBus } from './parse-strategy.service';
+import { StrategyContext } from './context';
+import { ServiceModel, StrategyParser } from './parser';
 
-export type CompilerContext = {
+export * from './context';
+export * from './parser';
+
+export type StrategyModel = {
   project: Project;
-  contextService: ContextService;
-  services: ServiceEventBus[];
+  context: StrategyContext;
+  services: ServiceModel[];
 };
 
 /**
@@ -17,7 +20,7 @@ export type CompilerContext = {
  * model is not handed between them: it lives in memory and is rebuilt from the same strategy
  * file, which keeps `pnpm compile` inside any one package self-contained.
  */
-export const createCompilerContext = (): CompilerContext => {
+export const parseStrategy = (): StrategyModel => {
   const project = new Project({
     compilerOptions: {
       experimentalDecorators: true,
@@ -25,7 +28,7 @@ export const createCompilerContext = (): CompilerContext => {
     },
   });
 
-  const contextService = new ContextService(
+  const context = new StrategyContext(
     project,
     STRATEGY_ROOT,
     STRATEGY_FILE_PATH,
@@ -34,7 +37,7 @@ export const createCompilerContext = (): CompilerContext => {
 
   return {
     project,
-    contextService,
-    services: new ParseStrategyService(contextService).getServices(),
+    context,
+    services: new StrategyParser(context).getServices(),
   };
 };

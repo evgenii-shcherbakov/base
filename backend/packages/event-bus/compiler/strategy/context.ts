@@ -7,7 +7,8 @@ import {
   SourceFile,
 } from 'ts-morph';
 
-export class ContextService {
+/** The strategy file's import graph, as the emitters need to reproduce it in their output. */
+export class StrategyContext {
   protected readonly strategyFile: SourceFile;
   protected readonly strategyImportStructures: ImportDeclarationStructure[] = [];
   protected readonly externalImportStructures: ImportDeclarationStructure[] = [];

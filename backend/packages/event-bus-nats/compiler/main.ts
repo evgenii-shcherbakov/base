@@ -1,5 +1,5 @@
 import { NatsAdapter } from '@compiler/nats.adapter';
-import { createCompilerContext } from '@backend/event-bus/compiler';
+import { parseStrategy } from '@backend/event-bus/compiler';
 import { join } from 'path';
 
 /**
@@ -9,13 +9,13 @@ import { join } from 'path';
  */
 const compile = async () => {
   try {
-    const { contextService, services } = createCompilerContext();
+    const { context, services } = parseStrategy();
 
     const adapter = NatsAdapter.createFactory({
       name: 'nats',
       outputPath: join(__dirname, '..', 'src', 'generated', 'index.ts'),
       templatePath: join(__dirname, 'templates'),
-    })(contextService, services);
+    })(context, services);
 
     await adapter.run();
   } catch (error) {

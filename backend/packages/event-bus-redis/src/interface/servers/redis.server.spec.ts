@@ -50,13 +50,18 @@ const buildDeps = (subscriptions: RedisQueueSubscription[] = []) => {
   return { registry, subscriptionRegistry, parking };
 };
 
-const buildServer = (deps: ReturnType<typeof buildDeps>): RedisEventBusServer => {
+const buildServer = (
+  deps: ReturnType<typeof buildDeps>,
+  waitForReady: () => Promise<void> = () => Promise.resolve(),
+): RedisEventBusServer => {
   return new RedisEventBusServer({
+    waitForReady,
     registry: deps.registry,
     connection: {} as Redis,
     parking: deps.parking as unknown as RedisParkingService,
     subscriptionRegistry: deps.subscriptionRegistry as unknown as RedisSubscriptionRegistry,
     workerOptions: { concurrency: 1 },
+    commandTimeoutMs: 50,
   });
 };
 
@@ -125,6 +130,22 @@ describe('RedisEventBusServer', () => {
 
       expect(workerInstances[0].close).toHaveBeenCalled();
       expect(server.unwrap()).toHaveLength(0);
+    });
+
+    // `publish()` runs on a connection whose offline queue never rejects, so without the gate an
+    // unreachable broker leaves the bootstrap waiting rather than reporting through `callback`.
+    it('reports an unreachable broker instead of publishing into the offline queue', async () => {
+      const subscription = buildSubscription('auth.user.create', 'storage.file');
+      const deps = buildDeps([subscription]);
+
+      const server = buildServer(deps, () =>
+        Promise.reject(new Error('Redis connection "auth-redis-client" was not ready')),
+      );
+      addHandler(server, subscription.queueName, jest.fn());
+
+      await expect(listen(server)).resolves.toThrow('was not ready');
+      expect(deps.subscriptionRegistry.publish).not.toHaveBeenCalled();
+      expect(workerInstances).toHaveLength(0);
     });
   });
 

@@ -1,6 +1,6 @@
 import { EventBus, EventBusHost } from '@backend/event-bus';
 import { Abstract, DynamicModule, Provider, Type } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { CustomStrategy } from '@nestjs/microservices';
 import { NATS_HOST_STREAMS, NatsClientFactory } from '@/generated';
 import {
@@ -12,7 +12,6 @@ import {
   NatsJetStreamClient,
   NatsStreamProvisionerService,
   NATS_CLIENT,
-  NATS_CONFIG_SERVICE,
   NATS_CONNECTION,
   NATS_MICROSERVICE_OPTIONS,
   NATS_STREAM_PROVISIONER,
@@ -32,10 +31,6 @@ export class NatsModule {
   static forRoot(params: NatsModuleForRootParams): DynamicModule {
     const providers: Provider[] = [
       {
-        provide: NATS_CONFIG_SERVICE,
-        useExisting: ConfigService,
-      },
-      {
         provide: NATS_CLIENT,
         inject: [NATS_CONNECTION],
         useFactory: (connectionService: NatsConnectionService): NatsJetStreamClient => {
@@ -46,30 +41,32 @@ export class NatsModule {
         // Owned streams are declared even in `onlyEmitting` mode — nobody else owns them.
         // This is the slot the Redis mediator occupies; JetStream needs no fan-out stage.
         provide: NATS_STREAM_PROVISIONER,
-        inject: [NATS_CONNECTION, NATS_CONFIG_SERVICE],
+        inject: [NATS_CONNECTION, natsConfig.KEY],
         useFactory: (
           connectionService: NatsConnectionService,
-          configService: ConfigService<NatsConfig>,
+          config: NatsConfig,
         ): NatsStreamProvisionerService => {
           return new NatsStreamProvisionerService({
             connectionService,
             streams: [...(NATS_HOST_STREAMS[params.host] ?? [])],
-            getStreamConfig: configService.getOrThrow('getStreamConfig', { infer: true }),
+            getStreamConfig: config.getStreamConfig,
           });
         },
       },
     ];
 
-    const exports: DynamicModule['exports'] = [NATS_CONFIG_SERVICE, NATS_CLIENT];
+    // `natsConfig.KEY` is not exported: it belongs to the imported `ConfigModule.forFeature`,
+    // not to this module, and Nest refuses to re-export a provider it does not own.
+    const exports: DynamicModule['exports'] = [NATS_CLIENT];
 
     if (!params.onlyEmitting) {
       providers.push({
         provide: NATS_MICROSERVICE_OPTIONS,
-        inject: [NATS_CONNECTION, NATS_STREAM_PROVISIONER, NATS_CONFIG_SERVICE],
+        inject: [NATS_CONNECTION, NATS_STREAM_PROVISIONER, natsConfig.KEY],
         useFactory: (
           connectionService: NatsConnectionService,
           provisioner: NatsStreamProvisionerService,
-          configService: ConfigService<NatsConfig>,
+          config: NatsConfig,
         ): CustomStrategy => {
           return {
             strategy: new NatsEventBusServer({
@@ -77,7 +74,7 @@ export class NatsModule {
               provisioner,
               registry: globalConsumerRegistry,
               streams: globalStreamRegistry.getStreams(),
-              getConsumerConfig: configService.getOrThrow('getConsumerConfig', { infer: true }),
+              getConsumerConfig: config.getConsumerConfig,
             }),
           };
         },
@@ -90,11 +87,9 @@ export class NatsModule {
     // shared connection is drained only after the consumers above are stopped.
     providers.push({
       provide: NATS_CONNECTION,
-      inject: [NATS_CONFIG_SERVICE],
-      useFactory: (configService: ConfigService<NatsConfig>): Promise<NatsConnectionService> => {
-        return NatsConnectionService.create(
-          configService.getOrThrow('getConnectionOptions', { infer: true })(params.host),
-        );
+      inject: [natsConfig.KEY],
+      useFactory: (config: NatsConfig): Promise<NatsConnectionService> => {
+        return NatsConnectionService.create(config.getConnectionOptions(params.host));
       },
     });
 

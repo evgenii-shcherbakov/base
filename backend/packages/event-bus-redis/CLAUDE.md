@@ -152,12 +152,45 @@ the interceptor's observable. Both use `resolveErrorMessage()` from `@backend/co
 
 > **Why parking and not dropping or failing:** [docs/adr/0005-parking-unrouted-events.md](../../../docs/adr/0005-parking-unrouted-events.md)
 
+## When Redis is unreachable
+
+Nothing on this connection rejects by itself: `maxRetriesPerRequest: null` (BullMQ's requirement for
+blocking commands) plus ioredis' offline queue means a command against a dead broker waits, silently
+and forever. Every path that a caller or the process itself waits on is therefore bounded:
+
+- **Boot** — `RedisConnectionService.waitUntilReady(REDIS_READY_TIMEOUT)` runs before the first
+  command, at the head of `RedisEventBusServer.listen()` *and* of the mediator's bootstrap hook.
+  Two places, because an `onlyEmitting` service registers no microservice and runs only the hook.
+  A rejection reaches `main.ts`, which logs it and exits 1.
+- **Emit** — `RedisQueueClient.emit`/`emitMany` are raced against `REDIS_COMMAND_TIMEOUT` and throw,
+  so the gRPC call that awaited the event fails instead of hanging. `getQueue()` is deliberately
+  unbounded: the mediator's fan-out runs in a worker, and resuming when the broker returns is
+  correct there.
+- **Shutdown** — `quit()` is a command too, so it is only sent to a `ready` client (otherwise a
+  plain `disconnect()`), and every BullMQ `close()` is raced against the same timeout. Without
+  this the process ignores its own SIGTERM for as long as the outage lasts.
+- **Logging** — the shared connection and the invalidation channel each report one line per outage
+  and one on recovery. Left to itself ioredis prints a raw stack on every reconnect attempt,
+  outside the app logger.
+
+> **Why loudly here and softly in `@backend/cache`:** [docs/adr/0013-event-bus-fails-loud.md](../../../docs/adr/0013-event-bus-fails-loud.md)
+
 ## Env
 
-`src/infrastructure/configs/redis.config.ts` owns every default; the nine `REDIS_*` variables are
+`src/infrastructure/configs/redis.config.ts` owns every default; the eleven `REDIS_*` variables are
 tabulated and explained in [docs/env.md](../../../docs/env.md). Two behaviours worth knowing here:
 `REDIS_PARKING_MAX_LENGTH=0` disables parking, and `REDIS_IP_FAMILY` exists because managed private
 networks are often IPv6-only.
+
+The factory's shape follows the repo convention — fields, functions only where a member takes an
+argument; see `backend/CLAUDE.md`.
+
+The factory is registered as `registerAs('eventBusRedis', …)` and read by injecting
+`redisConfig.KEY`, never by looking a getter up on `ConfigService`. That is load-bearing:
+`getConnectionOptions` is a name `@backend/cache` and `@backend/event-bus-nats` use too, and an
+unnamespaced factory merges into one flat store where the last module loaded wins.
+
+> **Why the namespace:** [docs/adr/0012-namespaced-package-config.md](../../../docs/adr/0012-namespaced-package-config.md)
 
 ## Commands & gotchas
 

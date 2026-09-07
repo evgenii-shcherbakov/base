@@ -32,7 +32,7 @@ describe('redisConfig', () => {
 
       expect(config.getSubscriptionKey('auth.user.create')).toBe('event-bus:subs:auth.user.create');
       expect(config.getParkingKey('auth.user.create')).toBe('event-bus:parked:auth.user.create');
-      expect(config.getInvalidationChannel()).toBe('event-bus:subs:changed');
+      expect(config.invalidationChannel).toBe('event-bus:subs:changed');
     });
 
     // What isolates the e2e suite from a developer's local dev data.
@@ -45,13 +45,13 @@ describe('redisConfig', () => {
       expect(config.getParkingKey('auth.user.create')).toBe(
         'event-bus-e2e:parked:auth.user.create',
       );
-      expect(config.getInvalidationChannel()).toBe('event-bus-e2e:subs:changed');
+      expect(config.invalidationChannel).toBe('event-bus-e2e:subs:changed');
     });
   });
 
   describe('job options', () => {
     it('defaults to the production retry ladder', () => {
-      const { defaultJobOptions } = loadConfig().getQueueOptions();
+      const { defaultJobOptions } = loadConfig().queueOptions;
 
       expect(defaultJobOptions).toMatchObject({
         attempts: 10,
@@ -63,7 +63,7 @@ describe('redisConfig', () => {
       const { defaultJobOptions } = loadConfig({
         REDIS_JOB_ATTEMPTS: '3',
         REDIS_JOB_BACKOFF_DELAY: '100',
-      }).getQueueOptions();
+      }).queueOptions;
 
       expect(defaultJobOptions).toMatchObject({
         attempts: 3,
@@ -72,36 +72,34 @@ describe('redisConfig', () => {
     });
 
     it('keeps the completed jobs replayable for an hour and the DLQ for a day', () => {
-      const { defaultJobOptions } = loadConfig().getQueueOptions();
+      const { defaultJobOptions } = loadConfig().queueOptions;
 
       expect(defaultJobOptions?.removeOnComplete).toEqual({ age: 3600, count: 1000 });
       expect(defaultJobOptions?.removeOnFail).toEqual({ age: 86400 });
     });
 
     it('follows REDIS_QUEUE_PREFIX', () => {
-      expect(loadConfig({ REDIS_QUEUE_PREFIX: 'bull-e2e' }).getQueueOptions().prefix).toBe(
-        'bull-e2e',
-      );
+      expect(loadConfig({ REDIS_QUEUE_PREFIX: 'bull-e2e' }).queueOptions.prefix).toBe('bull-e2e');
     });
   });
 
   describe('parking options', () => {
     it('mirrors the job retention by default', () => {
-      expect(loadConfig().getParkingOptions()).toEqual({ maxLength: 1000, ttlSeconds: 86400 });
+      expect(loadConfig().parkingOptions).toEqual({ maxLength: 1000, ttlSeconds: 86400 });
     });
 
     it('is disabled by a zero cap', () => {
-      expect(loadConfig({ REDIS_PARKING_MAX_LENGTH: '0' }).getParkingOptions().maxLength).toBe(0);
+      expect(loadConfig({ REDIS_PARKING_MAX_LENGTH: '0' }).parkingOptions.maxLength).toBe(0);
     });
   });
 
   describe('worker options', () => {
     it('serialises deliveries by default, like the NATS maxAckPending of 1', () => {
-      expect(loadConfig().getWorkerOptions().concurrency).toBe(1);
+      expect(loadConfig().workerOptions.concurrency).toBe(1);
     });
 
     it('follows REDIS_WORKER_CONCURRENCY', () => {
-      expect(loadConfig({ REDIS_WORKER_CONCURRENCY: '5' }).getWorkerOptions().concurrency).toBe(5);
+      expect(loadConfig({ REDIS_WORKER_CONCURRENCY: '5' }).workerOptions.concurrency).toBe(5);
     });
   });
 

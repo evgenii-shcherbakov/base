@@ -11,6 +11,7 @@ import {
   RedisQueueRegistry,
   RedisQueueSubscription,
   RedisSubscriptionRegistry,
+  withRedisTimeout,
 } from '@/infrastructure';
 import { RedisJobContext } from '../contexts';
 
@@ -20,6 +21,10 @@ export type RedisEventBusServerParams = {
   subscriptionRegistry: RedisSubscriptionRegistry;
   parking: RedisParkingService;
   workerOptions: Omit<WorkerOptions, 'connection'>;
+  /** Rejects when the broker is unreachable, so `listen()` can fail instead of hanging. */
+  waitForReady: () => Promise<void>;
+  /** Deadline for the Redis round-trips in `close()`. */
+  commandTimeoutMs: number;
 };
 
 type WorkerListener = [string, (...args: any[]) => void];
@@ -45,6 +50,11 @@ export class RedisEventBusServer extends Server implements CustomTransportStrate
       const subscriptions = this.params.registry.getSubscriptions();
 
       this.assertSubscriptions(subscriptions);
+
+      // Before the first command: `publish()` below runs on a connection whose offline queue
+      // never rejects, so an unreachable broker would leave the bootstrap waiting forever
+      // instead of reporting through `callback` and letting the process die.
+      await this.params.waitForReady();
 
       // Publishing first is what makes the replay safe: from this point the mediators fan out
       // to these queues directly, so an event parked between the replay and the registration
@@ -72,9 +82,17 @@ export class RedisEventBusServer extends Server implements CustomTransportStrate
     await Promise.all(
       this.workers.map(async (worker) => {
         try {
-          await worker.close();
+          // Bounded: `close()` drains through Redis, so a shutdown *because* Redis went away
+          // would otherwise leave the process ignoring its own SIGTERM.
+          await withRedisTimeout(
+            worker.close(),
+            this.params.commandTimeoutMs,
+            `Closing the worker "${worker.name}"`,
+          );
         } catch (error) {
-          this.logger.warn(`Failed to close the worker "${worker.name}"`, error);
+          this.logger.warn(
+            `Failed to close the worker "${worker.name}": ${resolveErrorMessage(error, REDIS_ERROR_FALLBACK)}`,
+          );
         }
       }),
     );

@@ -38,14 +38,17 @@ const buildDeps = () => {
 const buildMediator = (
   deps: ReturnType<typeof buildDeps>,
   eventIds = ['auth.user.create'],
+  waitForReady: () => Promise<void> = () => Promise.resolve(),
 ): RedisMediatorService => {
   return new RedisMediatorService({
     eventIds,
+    waitForReady,
     connection: {} as Redis,
     client: deps.client as unknown as RedisQueueClient,
     parking: deps.parking as unknown as RedisParkingService,
     subscriptionRegistry: deps.subscriptionRegistry as unknown as RedisSubscriptionRegistry,
     workerOptions: { concurrency: 1 },
+    commandTimeoutMs: 50,
   });
 };
 
@@ -75,13 +78,13 @@ describe('RedisMediatorService', () => {
   });
 
   describe('workers', () => {
-    it('runs one worker per event the host owns', () => {
+    it('runs one worker per event the host owns', async () => {
       const deps = buildDeps();
       const mediator = buildMediator(deps, ['storage.image.delete', 'storage.video.upload.finish']);
 
       expect(mediator.getWorkerCount()).toBe(2);
 
-      mediator.onApplicationBootstrap();
+      await mediator.onApplicationBootstrap();
 
       expect(workerInstances.map((worker) => worker.name)).toEqual([
         'storage.image.delete',
@@ -93,10 +96,22 @@ describe('RedisMediatorService', () => {
       const deps = buildDeps();
       const mediator = buildMediator(deps);
 
-      mediator.onApplicationBootstrap();
+      await mediator.onApplicationBootstrap();
       await mediator.onApplicationShutdown();
 
       expect(workerInstances[0].close).toHaveBeenCalled();
+    });
+
+    // Nest awaits the hook, so this rejection is what aborts `app.init()` instead of leaving the
+    // service up with workers pointed at a broker that never answers.
+    it('fails the bootstrap and starts nothing when the broker is unreachable', async () => {
+      const deps = buildDeps();
+      const mediator = buildMediator(deps, ['auth.user.create'], () =>
+        Promise.reject(new Error('Redis connection "auth-redis-client" was not ready')),
+      );
+
+      await expect(mediator.onApplicationBootstrap()).rejects.toThrow('was not ready');
+      expect(workerInstances).toHaveLength(0);
     });
   });
 
@@ -108,7 +123,7 @@ describe('RedisMediatorService', () => {
         'storage.storage-object',
       ]);
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
       await fanOut('auth.user.create', buildJob('42', { id: 'user-1' }));
 
       expect(deps.client.getQueue).toHaveBeenCalledWith('auth.user.create@storage.file');
@@ -128,7 +143,7 @@ describe('RedisMediatorService', () => {
       const deps = buildDeps();
       deps.subscriptionRegistry.getConsumers.mockResolvedValue(['storage.file']);
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
       await fanOut('auth.user.create', buildJob(undefined, {}));
 
       expect(deps.add).toHaveBeenCalledWith('auth.user.create', {}, { jobId: undefined });
@@ -138,7 +153,7 @@ describe('RedisMediatorService', () => {
       const deps = buildDeps();
       deps.subscriptionRegistry.getConsumers.mockResolvedValue(['storage.file']);
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
       await fanOut('auth.user.create', buildJob('42', {}));
 
       expect(deps.parking.park).not.toHaveBeenCalled();
@@ -149,7 +164,7 @@ describe('RedisMediatorService', () => {
     it('parks the event instead of dropping it', async () => {
       const deps = buildDeps();
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
       await fanOut('auth.user.create', buildJob('42', { id: 'user-1' }));
 
       expect(deps.parking.park).toHaveBeenCalledWith('auth.user.create', {
@@ -166,7 +181,7 @@ describe('RedisMediatorService', () => {
       deps.subscriptionRegistry.getConsumers.mockResolvedValueOnce([]);
       deps.subscriptionRegistry.getConsumers.mockResolvedValueOnce(['storage.storage-object']);
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
       await fanOut('auth.user.create', buildJob('42', {}));
 
       expect(deps.subscriptionRegistry.getConsumers).toHaveBeenNthCalledWith(
@@ -186,7 +201,7 @@ describe('RedisMediatorService', () => {
     it('completes the job when the fresh read is empty too', async () => {
       const deps = buildDeps();
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
 
       await expect(fanOut('auth.user.create', buildJob('42', {}))).resolves.toBeUndefined();
       expect(deps.add).not.toHaveBeenCalled();
@@ -196,7 +211,7 @@ describe('RedisMediatorService', () => {
       const deps = buildDeps();
       deps.parking.park.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
-      buildMediator(deps).onApplicationBootstrap();
+      await buildMediator(deps).onApplicationBootstrap();
 
       await expect(fanOut('auth.user.create', buildJob('42', {}))).rejects.toThrow(
         'connect ECONNREFUSED',

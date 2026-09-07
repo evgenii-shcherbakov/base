@@ -1,6 +1,6 @@
 import { EventBus, EventBusHost } from '@backend/event-bus';
 import { Abstract, DynamicModule, Provider, Type } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { CustomStrategy } from '@nestjs/microservices';
 import { REDIS_HOST_EVENTS, RedisClientFactory } from '@/generated';
 import {
@@ -14,7 +14,6 @@ import {
   RedisSubscriptionRegistry,
   RedisTopologyReporter,
   REDIS_CLIENT,
-  REDIS_CONFIG_SERVICE,
   REDIS_CONNECTION,
   REDIS_MEDIATOR,
   REDIS_MICROSERVICE_OPTIONS,
@@ -37,49 +36,46 @@ export class RedisModule {
   static forRoot(params: RedisModuleForRootParams): DynamicModule {
     const providers: Provider[] = [
       {
-        provide: REDIS_CONFIG_SERVICE,
-        useExisting: ConfigService,
-      },
-      {
         provide: REDIS_CLIENT,
-        inject: [REDIS_CONNECTION, REDIS_CONFIG_SERVICE],
+        inject: [REDIS_CONNECTION, redisConfig.KEY],
         useFactory: (
           connectionService: RedisConnectionService,
-          configService: ConfigService<RedisConfig>,
+          config: RedisConfig,
         ): RedisQueueClient => {
           return new RedisQueueClient(
             connectionService.getClient(),
-            configService.getOrThrow('getQueueOptions', { infer: true })(),
+            config.queueOptions,
+            config.commandTimeout,
           );
         },
       },
       {
         provide: REDIS_SUBSCRIPTION_REGISTRY,
-        inject: [REDIS_CONNECTION, REDIS_CONFIG_SERVICE],
+        inject: [REDIS_CONNECTION, redisConfig.KEY],
         useFactory: (
           connectionService: RedisConnectionService,
-          configService: ConfigService<RedisConfig>,
+          config: RedisConfig,
         ): RedisSubscriptionRegistry => {
           return new RedisSubscriptionRegistry(
             connectionService.getClient(),
-            configService.getOrThrow('getSubscriptionKey', { infer: true }),
-            configService.getOrThrow('getInvalidationChannel', { infer: true })(),
+            config.getSubscriptionKey,
+            config.invalidationChannel,
           );
         },
       },
       {
         provide: REDIS_PARKING,
-        inject: [REDIS_CONNECTION, REDIS_CLIENT, REDIS_CONFIG_SERVICE],
+        inject: [REDIS_CONNECTION, REDIS_CLIENT, redisConfig.KEY],
         useFactory: (
           connectionService: RedisConnectionService,
           client: RedisQueueClient,
-          configService: ConfigService<RedisConfig>,
+          config: RedisConfig,
         ): RedisParkingService => {
           return new RedisParkingService({
             client,
             connection: connectionService.getClient(),
-            getParkingKey: configService.getOrThrow('getParkingKey', { infer: true }),
-            options: configService.getOrThrow('getParkingOptions', { infer: true })(),
+            getParkingKey: config.getParkingKey,
+            options: config.parkingOptions,
           });
         },
       },
@@ -91,14 +87,14 @@ export class RedisModule {
           REDIS_CLIENT,
           REDIS_SUBSCRIPTION_REGISTRY,
           REDIS_PARKING,
-          REDIS_CONFIG_SERVICE,
+          redisConfig.KEY,
         ],
         useFactory: (
           connectionService: RedisConnectionService,
           client: RedisQueueClient,
           subscriptionRegistry: RedisSubscriptionRegistry,
           parking: RedisParkingService,
-          configService: ConfigService<RedisConfig>,
+          config: RedisConfig,
         ): RedisMediatorService => {
           return new RedisMediatorService({
             client,
@@ -106,7 +102,9 @@ export class RedisModule {
             subscriptionRegistry,
             eventIds: [...(REDIS_HOST_EVENTS[params.host] ?? [])],
             connection: connectionService.getClient(),
-            workerOptions: configService.getOrThrow('getWorkerOptions', { infer: true })(),
+            workerOptions: config.workerOptions,
+            commandTimeoutMs: config.commandTimeout,
+            waitForReady: () => connectionService.waitUntilReady(config.readyTimeout),
           });
         },
       },
@@ -126,22 +124,20 @@ export class RedisModule {
       },
     ];
 
-    const exports: DynamicModule['exports'] = [REDIS_CONFIG_SERVICE, REDIS_CLIENT];
+    // `redisConfig.KEY` is not exported: it belongs to the imported `ConfigModule.forFeature`,
+    // not to this module, and Nest refuses to re-export a provider it does not own. A consumer
+    // that needs the config imports the same feature module.
+    const exports: DynamicModule['exports'] = [REDIS_CLIENT];
 
     if (!params.onlyEmitting) {
       providers.push({
         provide: REDIS_MICROSERVICE_OPTIONS,
-        inject: [
-          REDIS_CONNECTION,
-          REDIS_SUBSCRIPTION_REGISTRY,
-          REDIS_PARKING,
-          REDIS_CONFIG_SERVICE,
-        ],
+        inject: [REDIS_CONNECTION, REDIS_SUBSCRIPTION_REGISTRY, REDIS_PARKING, redisConfig.KEY],
         useFactory: (
           connectionService: RedisConnectionService,
           subscriptionRegistry: RedisSubscriptionRegistry,
           parking: RedisParkingService,
-          configService: ConfigService<RedisConfig>,
+          config: RedisConfig,
         ): CustomStrategy => {
           return {
             strategy: new RedisEventBusServer({
@@ -149,7 +145,9 @@ export class RedisModule {
               subscriptionRegistry,
               registry: globalQueueRegistry,
               connection: connectionService.getClient(),
-              workerOptions: configService.getOrThrow('getWorkerOptions', { infer: true })(),
+              workerOptions: config.workerOptions,
+              commandTimeoutMs: config.commandTimeout,
+              waitForReady: () => connectionService.waitUntilReady(config.readyTimeout),
             }),
           };
         },
@@ -162,11 +160,11 @@ export class RedisModule {
     // shared connection is closed only after the workers and queues above are gone.
     providers.push({
       provide: REDIS_CONNECTION,
-      inject: [REDIS_CONFIG_SERVICE],
-      useFactory: (configService: ConfigService<RedisConfig>): RedisConnectionService => {
+      inject: [redisConfig.KEY],
+      useFactory: (config: RedisConfig): RedisConnectionService => {
         return new RedisConnectionService(
-          configService.getOrThrow('getConnectionUrl', { infer: true })(),
-          configService.getOrThrow('getConnectionOptions', { infer: true })(params.host),
+          config.connectionUrl,
+          config.getConnectionOptions(params.host),
         );
       },
     });

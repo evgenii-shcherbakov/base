@@ -6,6 +6,7 @@ import { RedisQueueClient } from '../clients';
 import { buildConsumerQueueName, buildFanOutJobId } from '../constants';
 import { RedisParkingService } from '../parking';
 import { RedisSubscriptionRegistry } from '../registry';
+import { withRedisTimeout } from '../utils';
 
 export type RedisMediatorParams = {
   eventIds: string[];
@@ -14,6 +15,10 @@ export type RedisMediatorParams = {
   subscriptionRegistry: RedisSubscriptionRegistry;
   parking: RedisParkingService;
   workerOptions: Omit<WorkerOptions, 'connection'>;
+  /** Rejects when the broker is unreachable, so the bootstrap fails instead of hanging. */
+  waitForReady: () => Promise<void>;
+  /** Deadline for the Redis round-trips in the workers' `close()`. */
+  commandTimeoutMs: number;
 };
 
 /**
@@ -41,7 +46,15 @@ export class RedisMediatorService implements OnApplicationBootstrap, OnApplicati
     return this.params.eventIds.length;
   }
 
-  onApplicationBootstrap(): void {
+  /**
+   * Async on purpose: Nest awaits the hook, so a rejection here aborts `app.init()` and the
+   * process reports a dead broker instead of running with workers that will never connect.
+   * The check lives here as well as in the server strategy because an `onlyEmitting` service
+   * registers no microservice at all — this hook is the only one it runs.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    await this.params.waitForReady();
+
     this.params.eventIds.forEach((eventId) => {
       const worker = new Worker(eventId, (job: Job) => this.fanOut(eventId, job), {
         ...this.params.workerOptions,
@@ -99,9 +112,17 @@ export class RedisMediatorService implements OnApplicationBootstrap, OnApplicati
     await Promise.all(
       this.workers.map(async (worker) => {
         try {
-          await worker.close();
+          // Bounded for the same reason as everything else on this connection: `close()` drains
+          // through Redis, and a shutdown *because* Redis went away must still end.
+          await withRedisTimeout(
+            worker.close(),
+            this.params.commandTimeoutMs,
+            `Closing the mediator worker "${worker.name}"`,
+          );
         } catch (error) {
-          this.logger.warn(`Failed to close the mediator worker "${worker.name}"`, error);
+          this.logger.warn(
+            `Failed to close the mediator worker "${worker.name}": ${resolveErrorMessage(error, 'unknown error')}`,
+          );
         }
       }),
     );

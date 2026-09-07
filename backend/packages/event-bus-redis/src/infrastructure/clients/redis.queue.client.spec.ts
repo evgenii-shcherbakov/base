@@ -19,8 +19,8 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-const buildClient = (): RedisQueueClient => {
-  return new RedisQueueClient({} as Redis, { prefix: 'bull' });
+const buildClient = (commandTimeoutMs = 5000): RedisQueueClient => {
+  return new RedisQueueClient({} as Redis, { prefix: 'bull' }, commandTimeoutMs);
 };
 
 describe('RedisQueueClient', () => {
@@ -99,6 +99,43 @@ describe('RedisQueueClient', () => {
       await expect(buildClient().emitMany('auth.user.create', [])).resolves.toEqual([]);
 
       expect(queueInstances).toHaveLength(0);
+    });
+  });
+
+  /**
+   * The shared connection retries forever (BullMQ's requirement), so a command against a dead
+   * broker never settles on its own. An emit is awaited inside a gRPC handler — without this the
+   * caller waits with no answer at all.
+   */
+  describe('timeout', () => {
+    const never = (): Promise<never> => new Promise<never>(() => undefined);
+
+    it('fails an emit that never settles, naming the event', async () => {
+      const client = buildClient(50);
+
+      client.getQueue('auth.user.create');
+      queueInstances[0].add.mockImplementationOnce(never);
+
+      await expect(client.emit('auth.user.create', { id: 'user-1' })).rejects.toThrow(
+        'Emitting "auth.user.create" timed out after 50ms',
+      );
+    });
+
+    it('fails a batch the same way', async () => {
+      const client = buildClient(50);
+
+      client.getQueue('auth.user.create');
+      queueInstances[0].addBulk.mockImplementationOnce(never);
+
+      await expect(client.emitMany('auth.user.create', [{ id: 'user-1' }])).rejects.toThrow(
+        'timed out after 50ms',
+      );
+    });
+
+    it('leaves a normal emit alone', async () => {
+      await expect(buildClient(50).emit('auth.user.create', { id: 'user-1' })).resolves.toEqual({
+        id: '1',
+      });
     });
   });
 

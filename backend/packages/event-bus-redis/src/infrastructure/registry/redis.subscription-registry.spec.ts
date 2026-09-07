@@ -23,8 +23,10 @@ const buildDeps = () => {
 
   const subscriber = {
     on: jest.fn(),
+    status: 'ready',
     subscribe: jest.fn(() => Promise.resolve(1)),
     quit: jest.fn(() => Promise.resolve('OK')),
+    disconnect: jest.fn(),
   };
 
   const connection = {
@@ -247,6 +249,51 @@ describe('RedisSubscriptionRegistry', () => {
       await registry.onApplicationBootstrap();
       await registry.onApplicationShutdown();
       expect(deps.subscriber.quit).toHaveBeenCalledTimes(1);
+    });
+
+    // `quit` is a command: on a client that is not ready it joins the offline queue and, during
+    // an outage, waits forever — which is a process that ignores its own SIGTERM.
+    it('drops a socket that is not ready instead of asking it to quit', async () => {
+      const deps = buildDeps();
+      const registry = buildRegistry(deps);
+
+      await registry.onApplicationBootstrap();
+      deps.subscriber.status = 'reconnecting';
+
+      await registry.onApplicationShutdown();
+
+      expect(deps.subscriber.quit).not.toHaveBeenCalled();
+      expect(deps.subscriber.disconnect).toHaveBeenCalled();
+    });
+  });
+
+  // ioredis retries every couple of seconds; one line per attempt buries everything else in the
+  // log for as long as the outage lasts.
+  describe('channel errors', () => {
+    it('reports an outage once, and again after the channel recovers', async () => {
+      const deps = buildDeps();
+      // The suite-wide spy from `beforeAll`; re-spying would hand back the same accumulated mock.
+      const warn = jest.mocked(Logger.prototype.warn);
+      warn.mockClear();
+
+      await buildRegistry(deps).onApplicationBootstrap();
+
+      const listeners = new Map<string, (payload: unknown) => void>(
+        deps.subscriber.on.mock.calls as [string, (payload: unknown) => void][],
+      );
+
+      listeners.get('error')?.(new Error('connect ECONNREFUSED'));
+      listeners.get('error')?.(new Error('connect ECONNREFUSED'));
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Subscription invalidation channel error: connect ECONNREFUSED'),
+      );
+
+      listeners.get('ready')?.(undefined);
+      listeners.get('error')?.(new Error('connect ECONNREFUSED'));
+
+      expect(warn).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -1,5 +1,7 @@
+import { resolveErrorMessage } from '@backend/common';
 import { Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import Redis from 'ioredis';
+import { REDIS_ERROR_FALLBACK } from '../constants';
 import { RedisQueueSubscription } from '../types';
 
 /** How long a mediator may reuse a cached consumer set before re-reading Redis. */
@@ -28,6 +30,7 @@ export class RedisSubscriptionRegistry implements OnApplicationBootstrap, OnAppl
   private readonly logger = new Logger(RedisSubscriptionRegistry.name);
   private readonly consumersCache = new Map<string, CachedConsumers>();
   private subscriber?: Redis;
+  private channelOutageReported = false;
 
   constructor(
     private readonly connection: Redis,
@@ -49,8 +52,21 @@ export class RedisSubscriptionRegistry implements OnApplicationBootstrap, OnAppl
       this.consumersCache.delete(eventId);
     });
 
+    // One line per outage, not one per reconnect attempt: ioredis retries every couple of
+    // seconds and each of those would otherwise print a full stack for as long as it lasts.
     subscriber.on('error', (error: Error) => {
-      this.logger.warn('Subscription invalidation channel error', error);
+      if (this.channelOutageReported) {
+        return;
+      }
+
+      this.channelOutageReported = true;
+      this.logger.warn(
+        `Subscription invalidation channel error: ${resolveErrorMessage(error, REDIS_ERROR_FALLBACK)}`,
+      );
+    });
+
+    subscriber.on('ready', () => {
+      this.channelOutageReported = false;
     });
 
     try {
@@ -119,18 +135,34 @@ export class RedisSubscriptionRegistry implements OnApplicationBootstrap, OnAppl
     return consumerIds;
   }
 
+  /**
+   * `quit()` is a command, not a socket operation: on a client that is not `ready` it waits in
+   * the offline queue, which on a shutdown *because* Redis went away means waiting forever and a
+   * process that ignores its own SIGTERM. Same rule as the two connection services follow.
+   */
   async onApplicationShutdown(): Promise<void> {
     if (!this.subscriber) {
       return;
     }
 
-    try {
-      await this.subscriber.quit();
-    } catch (error) {
-      this.logger.warn('Failed to close the invalidation channel connection', error);
+    const subscriber = this.subscriber;
+    this.subscriber = undefined;
+
+    if (subscriber.status !== 'ready') {
+      subscriber.disconnect();
+
+      return;
     }
 
-    this.subscriber = undefined;
+    try {
+      await subscriber.quit();
+    } catch (error) {
+      this.logger.warn(
+        `Failed to close the invalidation channel connection: ${resolveErrorMessage(error, REDIS_ERROR_FALLBACK)}`,
+      );
+    } finally {
+      subscriber.disconnect();
+    }
   }
 
   private async announce(eventIds: string[]): Promise<void> {

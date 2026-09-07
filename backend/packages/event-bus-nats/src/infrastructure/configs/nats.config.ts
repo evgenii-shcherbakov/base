@@ -7,6 +7,7 @@ import {
   StreamConfig,
 } from '@nats-io/jetstream';
 import { WithRequired, nanos } from '@nats-io/nats-core';
+import { registerAs } from '@nestjs/config';
 import { NodeConnectionOptions } from '@nats-io/transport-node';
 import { validateEnv } from '@packages/common';
 import { kebabCase } from 'change-case-all';
@@ -24,7 +25,13 @@ const env = validateEnv({
   NATS_DELIVER_POLICY: zod.enum(['all', 'new']).default('all'),
 });
 
-export const natsConfig = () => {
+/**
+ * Namespaced for the reason `@backend/cache` and `@backend/event-bus-redis` are: a plain factory's
+ * keys are merged into one flat store, and `getConnectionOptions` is a name all three picked.
+ *
+ * @see docs/adr/0012-namespaced-package-config.md
+ */
+export const natsConfig = registerAs('eventBusNats', () => {
   const natsUrl = env.NATS_URL;
 
   return {
@@ -65,6 +72,6 @@ export const natsConfig = () => {
       };
     },
   } as const;
-};
+});
 
 export type NatsConfig = ReturnType<typeof natsConfig>;

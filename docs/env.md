@@ -132,6 +132,8 @@ means editing `grpcConfig` **and** adding the variable.
 | `REDIS_JOB_ATTEMPTS`        | integer > 0                 | `10`                     |
 | `REDIS_JOB_BACKOFF_DELAY`   | integer > 0                 | `1000`                   |
 | `REDIS_EVENT_BUS_NAMESPACE` | string                      | `event-bus`              |
+| `REDIS_READY_TIMEOUT`       | integer > 0                 | `10000`                  |
+| `REDIS_COMMAND_TIMEOUT`     | integer > 0                 | `5000`                   |
 | `REDIS_PARKING_MAX_LENGTH`  | integer ≥ 0                 | `1000`                   |
 | `REDIS_PARKING_TTL`         | integer > 0                 | `86400`                  |
 | `REDIS_IP_FAMILY`           | integer (must be 0, 4 or 6) | `0`                      |
@@ -140,6 +142,14 @@ means editing `grpcConfig` **and** adding the variable.
 
 The parking bounds mirror the job retention (`count` of `removeOnComplete`, `age` of
 `removeOnFail`); `REDIS_PARKING_MAX_LENGTH=0` disables parking altogether.
+
+`REDIS_READY_TIMEOUT` and `REDIS_COMMAND_TIMEOUT` are the two deadlines that keep an unreachable
+broker from turning into a hang rather than a failure — this connection runs with
+`maxRetriesPerRequest: null`, so nothing on it rejects on its own. The first bounds the boot
+(a service that cannot reach Redis logs and exits 1); the second bounds an emit, so a gRPC call
+awaiting an event fails instead of waiting forever. Raise the ready timeout where the broker starts
+alongside the service and takes longer than ten seconds to accept connections
+([ADR-0013](adr/0013-event-bus-fails-loud.md)).
 
 `REDIS_IP_FAMILY` is the ioredis `family` option — `0` dual stack, `4` IPv4, `6` IPv6. It defaults to
 dual stack because managed private networks are often IPv6-only (Railway's `*.railway.internal`),
@@ -171,26 +181,34 @@ so a subscriber added later still sees what it missed; `new` opts out.
 
 <!-- env-table:start src=backend/packages/cache/src/infrastructure/configs/cache.config.ts -->
 
-| Variable           | Type                        | Default                  |
-| ------------------ | --------------------------- | ------------------------ |
-| `REDIS_URL`        | string                      | `redis://localhost:6379` |
-| `CACHE_REDIS_URL`  | string                      | —                        |
-| `CACHE_DRIVER`     | `redis` \| `memory`         | `redis`                  |
-| `CACHE_KEY_PREFIX` | string                      | `cache`                  |
-| `CACHE_TTL`        | integer ≥ 0                 | `300`                    |
-| `CACHE_IP_FAMILY`  | integer (must be 0, 4 or 6) | `0`                      |
+| Variable                | Type                        | Default                  |
+| ----------------------- | --------------------------- | ------------------------ |
+| `REDIS_URL`             | string                      | `redis://localhost:6379` |
+| `REDIS_IP_FAMILY`       | integer (must be 0, 4 or 6) | `0`                      |
+| `CACHE_REDIS_URL`       | string                      | —                        |
+| `CACHE_DRIVER`          | `redis` \| `memory`         | `redis`                  |
+| `CACHE_KEY_PREFIX`      | string                      | `cache`                  |
+| `CACHE_TTL`             | integer ≥ 0                 | `300`                    |
+| `CACHE_COMMAND_TIMEOUT` | integer > 0                 | `1000`                   |
 
 <!-- env-table:end -->
 
 `REDIS_URL` is the same variable `@backend/event-bus-redis` reads, and by design: one Redis is what
 docker-compose and the deployments run, and the two subsystems stay apart through disjoint key
-prefixes rather than through a second URL nobody remembers to set. `CACHE_REDIS_URL` overrides it
-for the case that argument does not survive — a cache instance configured to evict under memory
+prefixes rather than through a second URL nobody remembers to set. `REDIS_IP_FAMILY` is shared for a
+stronger reason — the address family belongs to the network, not to a subsystem, so a cache reachable
+over a different one than the broker is not a case that exists. `CACHE_REDIS_URL` overrides the URL
+for the case that first argument does not survive — a cache instance configured to evict under memory
 pressure has no business holding the event bus' durable queues.
 
 `CACHE_DRIVER=memory` swaps in the process-local store: no connection is opened at all, nothing is
 shared between replicas, and everything is lost on restart. It is a dev/test convenience, not a
 deployment option. `CACHE_TTL=0` stores entries without an expiry unless a call passes its own TTL.
+
+`CACHE_COMMAND_TIMEOUT` is the budget a single lookup gets before it is abandoned as a miss. It is
+what keeps fail-soft ([ADR-0010](adr/0010-cache-fails-soft.md)) fast as well as safe: a cache sits
+in front of a request, so a slow Redis must cost milliseconds, not the request. Raise it only if
+legitimate commands start showing up as errors in `CacheMetrics`.
 
 ---
 

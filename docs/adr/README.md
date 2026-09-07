@@ -38,3 +38,5 @@ template, updates this index, and links the ADR from the owning `CLAUDE.md`.
 | [0009](0009-cache-one-package-driver-switch.md) | The cache is one package with a driver switch, not a package per adapter | Accepted | `@backend/cache` |
 | [0010](0010-cache-fails-soft.md) | Cache operations fail soft instead of returning `Either` | Accepted | `@backend/cache` |
 | [0011](0011-identity-cached-in-auth.md) | The identity read is cached in auth, not in the gateway's access guard | Accepted | `backend.auth`, `backend.api-gateway` |
+| [0012](0012-namespaced-package-config.md) | A package's config factory is registered under its own namespace | Accepted | `@backend/cache`, `@backend/event-bus-redis`, `@backend/event-bus-nats` |
+| [0013](0013-event-bus-fails-loud.md) | The event bus fails loudly where the cache fails soft | Accepted | `@backend/event-bus-redis`, `@backend/cache`, backend apps |

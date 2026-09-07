@@ -88,7 +88,21 @@ separator is appended, so clearing `auth` cannot eat `authors`), and with an arg
 cached `null`, because a stored `null` is indistinguishable from a miss; there is no negative
 caching.
 
+Fail-soft is only worth anything if it is fast, which is a **connection** setting, not a service
+one: `enableOfflineQueue: false` plus `commandTimeout` (`CACHE_COMMAND_TIMEOUT`). With the offline
+queue on — ioredis' default — a lookup issued while the socket is down waits out the reconnect
+ladder, so "the cache degrades" meant roughly 30 seconds added to every request that touched it.
+Off, the command rejects at once and `CacheService` reads that as a miss.
+
+The corollary: a command sent **before the socket is ready** is a miss too, not a queued command.
+That window is the first moments after boot and each reconnect, and for a cache it is the right
+trade — a handful of extra Postgres reads instead of held requests. Nothing waits for the
+connection at bootstrap, deliberately: that would make an optional dependency a required one.
+`CacheConnectionService.waitUntilReady(timeoutMs)` exists for the callers that genuinely need a
+connected client (the e2e suite; a health endpoint would too).
+
 > **Why not `Either`, like every repository in this backend:** [docs/adr/0010-cache-fails-soft.md](../../../docs/adr/0010-cache-fails-soft.md)
+> **Why the event bus does the opposite:** [docs/adr/0013-event-bus-fails-loud.md](../../../docs/adr/0013-event-bus-fails-loud.md)
 
 ## `CacheMetrics`
 
@@ -133,10 +147,23 @@ e2e suite covers both paths.
 
 ## Env
 
-`src/infrastructure/configs/cache.config.ts` owns every default; the six variables are tabulated in
+`src/infrastructure/configs/cache.config.ts` owns every default; the seven variables are tabulated in
 [docs/env.md](../../../docs/env.md). Two worth knowing here: `CACHE_REDIS_URL` splits the cache off
 the event bus' Redis when eviction policy demands it (otherwise both read `REDIS_URL`), and
-`CACHE_TTL=0` stores without an expiry unless a call passes its own.
+`CACHE_TTL=0` stores without an expiry unless a call passes its own. There is deliberately **no**
+`CACHE_IP_FAMILY`: the address family belongs to the network, not to a subsystem, so the cache reads
+the event bus' `REDIS_IP_FAMILY`.
+
+The factory's shape follows the repo convention — fields, functions only where a member takes an
+argument; see `backend/CLAUDE.md`. `getCacheDriver()` is outside the factory for a different reason:
+`CacheModule.forRoot` reads it synchronously, before Nest resolves anything.
+
+The factory is registered as `registerAs('cache', …)` and read by injecting `cacheConfig.KEY`, never
+by looking a getter up on `ConfigService`. That is load-bearing: `getConnectionOptions` is a name
+`@backend/event-bus-redis` uses too, and an unnamespaced factory merges into one flat store where the
+last module loaded wins — which once handed the event bus this package's connection options.
+
+> **Why the namespace:** [docs/adr/0012-namespaced-package-config.md](../../../docs/adr/0012-namespaced-package-config.md)
 
 ## Commands & gotchas
 
@@ -164,7 +191,9 @@ pnpm test:e2e
 `src/cache.module.e2e-spec.ts` boots the real module and covers what a stub cannot prove: that a TTL
 actually expires, that `deleteByPrefix` clears more keys than one SCAN cursor returns (1200 of
 them), that falsy values come back as values, and that shutdown closes the socket from both the
-`ready` and the still-connecting state.
+`ready` and the still-connecting state. Its `beforeAll` calls `waitUntilReady` first: `init()` does
+not wait for the socket, and with no offline queue an early command answers as a miss rather than
+being held — a suite asserting real server behaviour has to start from a connected client.
 
 `test/cache-server.setup.js` is a jest `globalSetup`, not a `beforeAll`, for the same two timing
 reasons as the event bus': the config validates env at module load, so overrides must be in place

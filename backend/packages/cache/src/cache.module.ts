@@ -1,8 +1,7 @@
 import { DynamicModule, Provider } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { CacheDriver, CacheStore } from '@/domain';
 import {
-  CACHE_CONFIG_SERVICE,
   CACHE_CONNECTION,
   CacheConfig,
   cacheConfig,
@@ -30,10 +29,6 @@ export class CacheModule {
 
     const providers: Provider[] = [
       {
-        provide: CACHE_CONFIG_SERVICE,
-        useExisting: ConfigService,
-      },
-      {
         provide: CacheStore,
         inject: driver === 'redis' ? [CACHE_CONNECTION] : [],
         useFactory: (connectionService?: CacheConnectionService): CacheStore => {
@@ -47,18 +42,18 @@ export class CacheModule {
       CacheMetrics,
       {
         provide: CacheService,
-        inject: [CacheStore, CACHE_CONFIG_SERVICE, CacheMetrics],
+        inject: [CacheStore, cacheConfig.KEY, CacheMetrics],
         useFactory: (
           store: CacheStore,
-          configService: ConfigService<CacheConfig>,
+          config: CacheConfig,
           metrics: CacheMetrics,
         ): CacheService => {
           return new CacheService(
             store,
             {
               namespace,
-              keyPrefix: configService.getOrThrow('getKeyPrefix', { infer: true })(),
-              defaultTtl: configService.getOrThrow('getDefaultTtl', { infer: true })(),
+              keyPrefix: config.keyPrefix,
+              defaultTtl: config.defaultTtl,
             },
             metrics,
           );
@@ -71,11 +66,11 @@ export class CacheModule {
       // shutdown hooks in provider order, so the socket closes after everything using it.
       providers.push({
         provide: CACHE_CONNECTION,
-        inject: [CACHE_CONFIG_SERVICE],
-        useFactory: (configService: ConfigService<CacheConfig>): CacheConnectionService => {
+        inject: [cacheConfig.KEY],
+        useFactory: (config: CacheConfig): CacheConnectionService => {
           return new CacheConnectionService(
-            configService.getOrThrow('getConnectionUrl', { infer: true })(),
-            configService.getOrThrow('getConnectionOptions', { infer: true })(namespace),
+            config.connectionUrl,
+            config.getConnectionOptions(namespace),
           );
         },
       });

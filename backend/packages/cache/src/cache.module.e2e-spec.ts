@@ -31,7 +31,15 @@ describeWithServer('CacheModule (e2e)', () => {
     await moduleRef.init();
 
     cache = moduleRef.get(CacheService);
-    client = moduleRef.get<CacheConnectionService>(CACHE_CONNECTION).getClient();
+
+    const connection = moduleRef.get<CacheConnectionService>(CACHE_CONNECTION);
+    // `moduleRef.init()` does not wait for the socket, and the cache runs with
+    // `enableOfflineQueue: false` — a command sent before `ready` is answered as a miss instead
+    // of being held, which is exactly what makes an outage cost nothing. Assertions about real
+    // server behaviour therefore have to start from a connected client.
+    await connection.waitUntilReady(5000);
+
+    client = connection.getClient();
 
     // Only this suite's own keys — a blanket wipe of the prefix would let two files in
     // parallel workers destroy each other's state.

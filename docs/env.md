@@ -24,14 +24,14 @@ read off the workspace manifests, not maintained here:
 
 <!-- env-services:start -->
 
-| Service               | Packages                                                                      |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `backend.api-gateway` | `@backend/common`, `@backend/grpc`                                            |
-| `backend.auth`        | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
-| `backend.storage`     | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
-| `frontend.admin`      | —                                                                             |
+| Service               | Packages                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| `backend.api-gateway` | `@backend/common`, `@backend/grpc`                                                              |
+| `backend.auth`        | `@backend/cache`, `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg` |
+| `backend.storage`     | `@backend/common`, `@backend/event-bus-redis`, `@backend/grpc`, `@backend/pg`                   |
+| `frontend.admin`      | —                                                                                               |
 
-`@backend/cache`, `@backend/event-bus-nats` and `@backend/mongo` declare environment no service wires.
+`@backend/event-bus-nats` and `@backend/mongo` declare environment no service wires.
 
 <!-- env-services:end -->
 

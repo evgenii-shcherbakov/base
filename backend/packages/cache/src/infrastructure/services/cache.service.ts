@@ -1,7 +1,8 @@
 import { resolveErrorMessage } from '@backend/common';
 import { Logger } from '@nestjs/common';
-import { CacheServiceOptions, CacheStore } from '../../domain';
+import { CacheOperation, CacheServiceOptions, CacheStore } from '../../domain';
 import { CACHE_ERROR_FALLBACK, CACHE_KEY_SEPARATOR } from '../constants';
+import { CacheMetrics } from '../metrics';
 import { buildCacheKey } from '../utils';
 
 /**
@@ -12,10 +13,10 @@ import { buildCacheKey } from '../utils';
  *
  * - **key layout** — `<CACHE_KEY_PREFIX>:<namespace>:<key>`, so two services sharing one Redis
  *   cannot collide and a namespace can be dropped in one scan;
- * - **fail-soft** — a store error is logged and turned into a miss (`get` → `null`, `set` →
- *   `false`, `delete*` → `0`, `wrap` → the factory's own value). A cache is an optimisation;
- *   losing Redis must not fail a read that Postgres can still answer. Errors thrown by the
- *   `wrap` factory are *not* swallowed — those are the caller's real work;
+ * - **fail-soft** — a store error is logged, counted on `CacheMetrics` and turned into a miss
+ *   (`get` → `null`, `set` → `false`, `delete*` → `0`, `wrap` → the factory's own value). A cache
+ *   is an optimisation; losing Redis must not fail a read that Postgres can still answer. Errors
+ *   thrown by the `wrap` factory are *not* swallowed — those are the caller's real work;
  * - **single-flight `wrap`** — N concurrent misses of the same key run the factory once.
  */
 export class CacheService {
@@ -24,6 +25,8 @@ export class CacheService {
   constructor(
     private readonly store: CacheStore,
     private readonly options: CacheServiceOptions,
+    /** Shared with every scope: the connection is up or down for all of them at once. */
+    private readonly metrics = new CacheMetrics(),
     /**
      * Shared with every scope created from this instance, so two scopes of the same key
      * still dedupe. Keyed by the full key, so different namespaces never do.
@@ -36,8 +39,17 @@ export class CacheService {
     return new CacheService(
       this.store,
       { ...this.options, namespace: buildCacheKey(this.options.namespace, namespace) },
+      this.metrics,
       this.inFlight,
     );
+  }
+
+  /**
+   * The counters this instance shares with its scopes. `CacheMetrics` is a module provider too,
+   * so a consumer that only wants the numbers can inject it directly.
+   */
+  getMetrics(): CacheMetrics {
+    return this.metrics;
   }
 
   /** The key as it is written in the store — useful in logs and specs. */
@@ -47,7 +59,15 @@ export class CacheService {
 
   async get<Value>(key: string): Promise<Value | null> {
     try {
-      return await this.store.get<Value>(this.buildKey(key));
+      const value = await this.store.get<Value>(this.buildKey(key));
+
+      if (value === null) {
+        this.metrics.recordMiss();
+      } else {
+        this.metrics.recordHit();
+      }
+
+      return value;
     } catch (error) {
       this.warn('get', key, error);
 
@@ -59,6 +79,7 @@ export class CacheService {
   async set<Value>(key: string, value: Value, ttlSeconds?: number): Promise<boolean> {
     try {
       await this.store.set(this.buildKey(key), value, this.resolveTtl(ttlSeconds));
+      this.metrics.recordWrite();
 
       return true;
     } catch (error) {
@@ -158,7 +179,9 @@ export class CacheService {
     return ttl > 0 ? ttl : undefined;
   }
 
-  private warn(operation: string, key: string, error: unknown): void {
+  /** The single place a swallowed failure passes through, so it is also the place it is counted. */
+  private warn(operation: CacheOperation, key: string, error: unknown): void {
+    this.metrics.recordError(operation);
     this.logger.warn(
       `Cache ${operation} failed for "${key}": ${resolveErrorMessage(error, CACHE_ERROR_FALLBACK)}`,
     );

@@ -167,7 +167,9 @@ implementation; `backend.api-gateway` is a deliberate two-layer exception.
 **Caching** is `@backend/cache`: one `CacheStore` port with a Redis and an in-memory adapter behind a
 single `CacheModule`, injected as `CacheService`. Unlike the event bus it is *not* split per
 transport — the reasoning is [ADR-0009](docs/adr/0009-cache-one-package-driver-switch.md), the
-internals are in that package's `CLAUDE.md`. No service wires it yet.
+internals are in that package's `CLAUDE.md`. `backend.auth` is its one consumer: it caches the user
+behind the gateway's per-request access check, and evicts on every user write — why there and not in
+the gateway's guard is [ADR-0011](docs/adr/0011-identity-cached-in-auth.md).
 
 ## Frontend admin
 

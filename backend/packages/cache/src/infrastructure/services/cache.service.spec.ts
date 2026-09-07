@@ -197,4 +197,47 @@ describe('CacheService', () => {
       );
     });
   });
+
+  // The log line is the only other trace a swallowed failure leaves, and nothing alerts on it.
+  describe('metrics', () => {
+    it('counts a hit and a miss apart', async () => {
+      const service = buildService();
+
+      await service.set('user:1', 'value');
+      await service.get('user:1');
+      await service.get('user:2');
+
+      expect(service.getMetrics().snapshot()).toMatchObject({ hits: 1, misses: 1, writes: 1 });
+    });
+
+    it('counts a swallowed failure as both an error and a miss', async () => {
+      const service = buildService(buildBrokenStore());
+
+      await service.get('user:1');
+      await service.deleteByPrefix();
+
+      const snapshot = service.getMetrics().snapshot();
+
+      expect(snapshot).toMatchObject({ errors: 2, hits: 0, misses: 0, writes: 0 });
+      expect(snapshot.errorsByOperation).toMatchObject({ get: 1, deleteByPrefix: 1 });
+    });
+
+    it('counts a failed write as an error rather than a write', async () => {
+      const service = buildService(buildBrokenStore());
+
+      await expect(service.set('user:1', 'value')).resolves.toBe(false);
+
+      expect(service.getMetrics().snapshot()).toMatchObject({ writes: 0, errors: 1 });
+    });
+
+    it('shares one set of counters with every scope', async () => {
+      const service = buildService();
+
+      await service.scope('user').set('1', 'value');
+      await service.scope('session').get('1');
+
+      expect(service.getMetrics().snapshot()).toMatchObject({ writes: 1, misses: 1 });
+      expect(service.scope('user').getMetrics()).toBe(service.getMetrics());
+    });
+  });
 });

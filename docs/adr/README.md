@@ -37,3 +37,4 @@ template, updates this index, and links the ADR from the owning `CLAUDE.md`.
 | [0008](0008-generated-env-tables.md) | Env tables are generated from the zod schemas | Accepted | `@packages/env-docs`, `docs/env.md` |
 | [0009](0009-cache-one-package-driver-switch.md) | The cache is one package with a driver switch, not a package per adapter | Accepted | `@backend/cache` |
 | [0010](0010-cache-fails-soft.md) | Cache operations fail soft instead of returning `Either` | Accepted | `@backend/cache` |
+| [0011](0011-identity-cached-in-auth.md) | The identity read is cached in auth, not in the gateway's access guard | Accepted | `backend.auth`, `backend.api-gateway` |

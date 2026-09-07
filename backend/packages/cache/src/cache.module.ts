@@ -7,6 +7,7 @@ import {
   CacheConfig,
   cacheConfig,
   CacheConnectionService,
+  CacheMetrics,
   CacheService,
   getCacheDriver,
   MemoryCacheStore,
@@ -41,18 +42,26 @@ export class CacheModule {
             : new MemoryCacheStore();
         },
       },
+      // One instance per module, shared by the service and every scope it hands out — what
+      // makes "how often did the fail-soft path fire?" answerable at all.
+      CacheMetrics,
       {
         provide: CacheService,
-        inject: [CacheStore, CACHE_CONFIG_SERVICE],
+        inject: [CacheStore, CACHE_CONFIG_SERVICE, CacheMetrics],
         useFactory: (
           store: CacheStore,
           configService: ConfigService<CacheConfig>,
+          metrics: CacheMetrics,
         ): CacheService => {
-          return new CacheService(store, {
-            namespace,
-            keyPrefix: configService.getOrThrow('getKeyPrefix', { infer: true })(),
-            defaultTtl: configService.getOrThrow('getDefaultTtl', { infer: true })(),
-          });
+          return new CacheService(
+            store,
+            {
+              namespace,
+              keyPrefix: configService.getOrThrow('getKeyPrefix', { infer: true })(),
+              defaultTtl: configService.getOrThrow('getDefaultTtl', { infer: true })(),
+            },
+            metrics,
+          );
         },
       },
     ];
@@ -76,8 +85,9 @@ export class CacheModule {
       imports: [ConfigModule.forFeature(cacheConfig)],
       providers,
       // `CacheStore` is exported too, so a consumer that wants the raw port (or a spec that
-      // overrides it) does not have to reach through the service.
-      exports: [CacheService, CacheStore],
+      // overrides it) does not have to reach through the service; `CacheMetrics`, so a health
+      // or scrape endpoint can read the counters without one.
+      exports: [CacheService, CacheStore, CacheMetrics],
       global: true,
       module: CacheModule,
     };

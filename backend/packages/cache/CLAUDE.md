@@ -10,8 +10,10 @@ The application cache: a `CacheStore` port with two adapters — Redis (`ioredis
 one — behind a single `CacheModule`. Services inject `CacheService` and never learn which driver is
 running.
 
-**Status: wired into nothing yet.** No service imports it; `docs/env.md` lists it among the packages
-whose environment no service reads. It builds, lints and is covered by unit + e2e suites.
+**Status: live in `backend.auth`**, which caches the identity read behind the gateway's per-request
+access check (`cache:auth:user:<id>`) — see that service's `CLAUDE.md` for the wiring and
+[ADR-0011](../../../docs/adr/0011-identity-cached-in-auth.md) for why the cache sits there and not
+in the gateway. No other service wires it.
 
 Not to be confused with `MemoryCache` in `@backend/common` — a `setTimeout`-per-key Map used inside
 one process by `api-gateway`. This package supersedes that pattern for anything that has to survive
@@ -31,6 +33,7 @@ src/
     configs/                     # cacheConfig() + getCacheDriver()
     connections/                 # CacheConnectionService — the package's own ioredis socket
     constants/                   # DI tokens, CACHE_ERROR_FALLBACK, key separator, SCAN count
+    metrics/                     # CacheMetrics — counters for what fail-soft swallows
     serializers/                 # CacheSerializer — the wire format both adapters share
     stores/                      # RedisCacheStore, MemoryCacheStore
     services/cache.service.ts    # what consumers inject
@@ -57,6 +60,10 @@ the service is the single place that decides what a failure means.
 - `MemoryCacheStore` is a `Map` with **lazy** expiry (checked on read, no timers — a `setTimeout`
   per key keeps jest from exiting). A key nobody reads again holds its memory until
   `deleteByPrefix`. Dev and tests only.
+- **A value crosses the cache as JSON**, whichever adapter is running, so a `Date` field comes back
+  an ISO **string** even where the type says `Date` — the same property `@backend/event-bus`
+  documents for its payloads. Rebuild timestamps on the way out (`AuthGetUserByTokenUseCase` is the
+  live example) or the first consumer that serializes them will throw.
 - `CacheSerializer` wraps values as `{ value }` before `JSON.stringify`, so `null`, `0`, `false` and
   `''` survive the round-trip — a bare parse cannot tell a stored `null` from a missing key. Both
   adapters use it, which is what keeps the memory driver from handing back live references while
@@ -69,9 +76,9 @@ Owns the three things adapters should not repeat:
 - **Key layout** — `<CACHE_KEY_PREFIX>:<namespace>:<key>` via `buildCacheKey()`, which splits on
   `:`, trims and drops blanks, so `'user:1'` and `'user', '1'` produce the same key and no `::` ever
   reaches the keyspace. `scope('user')` returns a child bound to a deeper namespace.
-- **Fail-soft** — a store error is logged (`resolveErrorMessage` + `CACHE_ERROR_FALLBACK`) and
-  becomes the empty result: `get` → `null`, `set` → `false`, `delete*` → `0`, `wrap` → the factory's
-  own value. An error thrown by the `wrap` factory is **not** swallowed.
+- **Fail-soft** — a store error is logged (`resolveErrorMessage` + `CACHE_ERROR_FALLBACK`), counted
+  on `CacheMetrics`, and becomes the empty result: `get` → `null`, `set` → `false`, `delete*` → `0`,
+  `wrap` → the factory's own value. An error thrown by the `wrap` factory is **not** swallowed.
 - **Single-flight `wrap`** — concurrent misses of one key run the factory once. The in-flight map is
   shared with every `scope()` child, so two scopes of the same key still dedupe.
 
@@ -83,6 +90,24 @@ caching.
 
 > **Why not `Either`, like every repository in this backend:** [docs/adr/0010-cache-fails-soft.md](../../../docs/adr/0010-cache-fails-soft.md)
 
+## `CacheMetrics`
+
+The counterpart to fail-soft, and the thing ADR-0010 names as the answer to its own cost: an
+outage nobody is told about shows up as load on Postgres, not as errors. `CacheMetrics` counts
+`hits` / `misses` / `writes` and `errors` (in total and per operation, with `lastErrorAt`), and
+`errors` against `hits + misses` is the ratio worth an alert.
+
+- Every swallowed failure goes through `CacheService.warn`, which is therefore where the counter
+  lives — a new fail-soft path cannot forget to count.
+- One instance per `CacheModule`, shared with every `scope()` child (the connection is up or down
+  for all of them). Read it by injecting `CacheMetrics`, or `cacheService.getMetrics()` when the
+  service is already at hand; `snapshot()` returns a copy, `reset()` supports delta scraping.
+- **Deliberately a plain counter object, not a metrics client.** The repository runs no Prometheus,
+  and a client declared here would land in the dependency closure of every service that only wanted
+  a key-value store. Wiring it to a real exporter is the consumer's job — `snapshot()` is the seam.
+- Nothing polls it yet. No service exposes the numbers; wiring them to a health or scrape endpoint
+  is the next step, not something this package does.
+
 ## Module (`cache.module.ts`)
 
 ```ts
@@ -93,8 +118,9 @@ CacheModule.forRoot({ namespace: 'auth', driver: 'memory' }); // explicit overri
 - The driver is resolved **synchronously** through `getCacheDriver()`, before Nest resolves
   anything: with `memory` the ioredis connection provider is not registered at all, so the package
   runs with no Redis in sight.
-- Binds the abstract `CacheStore` to the chosen adapter and exports it alongside `CacheService`, so
-  a spec can override the port without reaching through the service.
+- Binds the abstract `CacheStore` to the chosen adapter and exports it alongside `CacheService` and
+  `CacheMetrics`, so a spec can override the port — and a health endpoint read the counters —
+  without reaching through the service.
 - `CACHE_CONNECTION` is registered **last** on purpose, the rule `RedisModule` follows: Nest runs
   shutdown hooks in provider order, so the socket closes after everything using it.
 - No `forFeature` — namespace scoping is `cacheService.scope()`, which needs no extra DI token.
@@ -123,7 +149,7 @@ pnpm dev / test:watch / lint / format / reset
 
 - The unit suite covers what the package exists for and what fails silently when broken: the key
   builder, the serializer's falsy round-trip, the SCAN loop (including that `KEYS` is never called),
-  lazy expiry, and every fail-soft path with its log line.
+  lazy expiry, and every fail-soft path with its log line and its counter.
 - `pnpm lint` runs type-checked rules the backend preset does not disable — `no-misused-promises`
   and `no-base-to-string` both caught real code here. Compare a possibly-undefined promise with
   `!== undefined`, and put an `unknown` error through `resolveErrorMessage`, not `String()`.

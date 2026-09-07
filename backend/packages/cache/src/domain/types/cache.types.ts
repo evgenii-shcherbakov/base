@@ -1,6 +1,9 @@
 /** Which adapter backs the store. `memory` is process-local — dev and tests only. */
 export type CacheDriver = 'redis' | 'memory';
 
+/** The `CacheStore` methods, named so a failure counter cannot be keyed by a typo. */
+export type CacheOperation = 'get' | 'set' | 'has' | 'delete' | 'deleteByPrefix';
+
 export type CacheServiceOptions = {
   /** First key segment, shared by every process (`CACHE_KEY_PREFIX`). */
   keyPrefix: string;

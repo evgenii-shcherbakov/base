@@ -1,3 +1,4 @@
+import { CacheModule } from '@backend/cache';
 import { EventBusHost } from '@backend/event-bus';
 import { GrpcModule } from '@backend/grpc';
 import { PgModule } from '@backend/pg';
@@ -20,6 +21,7 @@ import { config } from './config';
     PgModule.forRoot({ database: Database.AUTH }),
     GrpcModule.forRoot({ host: 'auth' }),
     RedisModule.forRoot({ host: EventBusHost.AUTH }),
+    CacheModule.forRoot({ namespace: 'auth' }),
     AuthModule,
     TempCodeModule,
     UserModule,

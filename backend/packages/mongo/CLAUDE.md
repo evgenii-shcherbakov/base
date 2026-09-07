@@ -49,4 +49,3 @@ pnpm format / reset
 
 - Dormant: changes here are not exercised by any running service — verify against a real wiring before trusting them.
 - `lodash` is used throughout and is declared in this package's deps, with `@types/lodash` in devDeps.
-- cjs-only output; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

@@ -14,7 +14,7 @@ The hand-written infrastructure that wraps all NestJS gRPC transport: server opt
 
 ## Topology config (`infrastructure/configs/grpc.config.ts`)
 
-`grpcConfig()` is the **single source of truth for the gRPC topology**: the three hosts (`apiGateway`, `auth`, `storage`), each host's URL (from env `API_GATEWAY_GRPC_URL` / `AUTH_GRPC_URL` / `STORAGE_GRPC_URL`), and which services it serves (keyed by `Grpc<X>Transport.service` → `.definition` from `@backend/proto`). Adding a service or host = edit here + add the env var. `GrpcConfigHost` / `GrpcConfigService` types derive from it.
+`grpcConfig()` is the **single source of truth for the gRPC topology**: the three hosts (`apiGateway`, `auth`, `storage`), each host's URL (from env `API_GATEWAY_GRPC_URL` / `AUTH_GRPC_URL` / `STORAGE_GRPC_URL`, tabulated in [docs/env.md](../../../docs/env.md)), and which services it serves (keyed by `Grpc<X>Transport.service` → `.definition` from `@backend/proto`). Adding a service or host = edit here + add the env var. `GrpcConfigHost` / `GrpcConfigService` types derive from it.
 
 ## Runtime .proto
 
@@ -39,4 +39,3 @@ pnpm format / reset
 
 - `grpcConfig` is the one place that maps host → URL → services; keep it and the `*_GRPC_URL` env vars in sync.
 - `lodash` is used (`grpc.module`, `client-registry`) and is declared in this package's deps, with `@types/lodash` in devDeps.
-- Output is cjs-only; consumers resolve `dist/`, so rebuild after changes (turbo `^build` handles downstream).

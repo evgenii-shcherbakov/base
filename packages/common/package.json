@@ -15,7 +15,8 @@
     "reset:modules": "rm -rf node_modules"
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.14.3"
+    "@grpc/grpc-js": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@packages/configs": "workspace:*"

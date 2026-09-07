@@ -17,7 +17,7 @@ The admin panel. Refine resources under `src/app/`: `auth/{users,temp-codes}` an
 - `features/grpc/services/grpc.data.service.ts` — `GrpcDataService` builds the resource→repository map behind the CRUD data provider from these singletons (no longer instantiates its own).
 - the binary-media **route handlers** (`app/api/*`) and the storage create/folder **server actions** (`features/storage/actions/*`), which import the storage repos directly.
 
-The **auth** flow (`features/auth/services/auth.service.ts`) is separate and deliberately uses the `Web`/`Public` audiences (`GrpcUserWebRepository`, `GrpcTempCodeWebRepository`, `GrpcAuthPublicRepository`): login / refresh / current-user are web-audience calls, not admin CRUD.
+The **auth** flow (`features/auth/services/auth.service.ts`) is separate and deliberately uses the `Web`/`Public` audiences (`GrpcUserWebRepository`, `GrpcAuthPublicRepository`): login / refresh / current-user are web-audience calls, not admin CRUD. `getAuthMetadata()` is the single source of gRPC metadata for every call, uploads included — stream uploads used to mint a one-time temp-code first, but the gateway now verifies the access token directly.
 
 ## Binary media (separate path)
 
@@ -41,7 +41,7 @@ The `file`/`image`/`video` resources are registered in `app/layout.tsx` with `da
 
 ## Config & commands
 
-`config.service` reads env: `BACKEND_GRPC_URL` (api-gateway), `DEFAULT_EMAIL` / `DEFAULT_PASSWORD`, `CHUNK_SIZE_MB`, `PORT`, `HOSTNAME`.
+`config.service` validates env through `validateEnv`; that call owns each variable's type and default, and the table in [docs/env.md](../../../docs/env.md) is generated from it — change the schema and run `pnpm compile:env-docs` rather than editing the table. All of it is read on the Next server, so nothing there is a `NEXT_PUBLIC_*`.
 
 ```bash
 pnpm dev              # refine dev (Refine CLI wrapping Next)

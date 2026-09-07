@@ -4,14 +4,15 @@ Guidance for working inside `backend/apps/storage`. The 4-layer hexagonal/use-ca
 
 ## What this service is
 
-The media / file storage microservice, backed by **Bunny CDN**. gRPC host `storage`, event-bus host `EventBusHost.STORAGE`, database `Database.STORAGE`. More involved than `auth`: 5 modules, an external provider, cross-module deps, NATS subscriptions, and cron sync.
+The media / file storage microservice, backed by **Bunny CDN**. gRPC host `storage`, event-bus host `EventBusHost.STORAGE`, database `Database.STORAGE`. More involved than `auth`: 5 modules, an external provider, cross-module deps, event-bus subscriptions, and cron sync.
 
 ## Modules (`src/modules/`)
 
 - **storage** — provider abstraction over Bunny (no DB, no controller). `StorageFileService` → Bunny **Storage** API, `StorageVideoService` → Bunny **Stream** API, each via its own axios client (`FILE_HTTP_CLIENT` / `VIDEO_HTTP_CLIENT`). `bunnyStorageConfig` builds API URLs, signed CDN URLs (private key + expiry), and `rootDir` = `dev`/`prod`. Exports the two services.
-- **storage-object** — a virtual folder tree (`folderPath`, `isPublic`, `isFolder`). NATS (`NatsStorageObjectController`): on `auth.user.create` → create the user's root folder; on `storage-object.parentUpdate` → cascade `folderPath`/`isPublic` to children. Emits `parentUpdate`. Exports `StorageObjectValidationService`.
-- **file** — plain files (Bunny Storage); upload + hourly `FileCleanupUseCase` cron. NATS (`NatsFileController`) consumes `video.uploadFinish`/`uploadFail` (cross-host handler on the `video` service) to flip the backing file's `uploadStatus` to `READY`/`FAILED` — video uploads always create a companion file row.
-- **image** — images; gRPC only. Emits `ImageEventBus.emitDelete` on delete; has no NATS subscriber of its own.
+- **storage-object** — a virtual folder tree (`folderPath`, `isPublic`, `isFolder`). Event bus (`RedisStorageObjectController`, consumer id `storage.storage-object`): on `auth.user.create` → create the user's root folder; on `storage-object.parentUpdate` → cascade `folderPath`/`isPublic` to children. Emits `parentUpdate`. Exports `StorageObjectValidationService`.
+  - **The root folder is unique per user and undeletable.** Uniqueness is a partial unique index (`storage-objects_root_folder_unique` on `user_id where is_folder and parent_id is null`, declared as `@Index({ expression })` on the entity) rather than a read-then-write check — the `auth.user.create` handler is at-least-once, so two replicas (or a stalled BullMQ job) can run it concurrently. `StorageObjectCreateRootFolderUseCase` keeps an `isExists` fast path but treats a `ConflictException` from `saveOne` as success and returns any other error as `left`, which the controller rethrows so the job is retried. `StorageObjectDeleteOneUseCase` rejects a folder with no parent.
+- **file** — plain files (Bunny Storage); upload + hourly `FileCleanupUseCase` cron. `RedisFileController` (consumer id `storage.file`) consumes `video.uploadFinish`/`uploadFail` (cross-host handler on the `video` service) to flip the backing file's `uploadStatus` to `READY`/`FAILED` — video uploads always create a companion file row.
+- **image** — images; gRPC only. Emits `ImageEventBus.emitDelete` on delete; has no event-bus subscriber of its own.
 - **video** — videos (Bunny Stream); upload, url/download maps, and `VideoSyncWithProviderUseCase` (cron) that pages Bunny and `bulkUpdate`s `duration`/`views` by `providerId`. Emits `uploadFinish`/`uploadFail`, consumed by `file`.
 
 ## Entities & migrator
@@ -22,7 +23,7 @@ The media / file storage microservice, backed by **Bunny CDN**. gRPC host `stora
 
 ## Config / env
 
-`config.ts` is just `commonConfig()`; the Bunny config lives in the storage module. Env: `DATABASE_URL`, `STORAGE_GRPC_URL`, `AUTH_GRPC_URL` (migrator only), `NATS_URL`, and `BUNNY_STORAGE_*` / `BUNNY_STREAM_*` (API keys, CDN zones, private keys, expiries, stream library id).
+`config.ts` is just `commonConfig()`; the Bunny config lives in the storage module and is the only env this service declares — nine `BUNNY_STORAGE_*` / `BUNNY_STREAM_*` variables, six of them required. Those plus the env of the packages it wires: [docs/env.md](../../../docs/env.md).
 
 ## Commands & gotchas
 
@@ -30,6 +31,6 @@ The media / file storage microservice, backed by **Bunny CDN**. gRPC host `stora
 pnpm start:dev        # nest start --watch service
 pnpm build / migrate (:new/:initial/:sql/:tasks) / lint
 ```
-- NATS handlers must stay idempotent (at-least-once redelivery).
+- Event-bus handlers must stay idempotent (at-least-once redelivery, up to 10 BullMQ attempts).
 - Heavy cross-module wiring (`video` imports `file` + `storage-object` + `storage`) — check for cycles when adding deps.
 - `eslint.config.mjs` wires `@packages/configs` `layerGuard()` alongside `nestConfig` — same inward-only import guard as `auth`; keep new imports pointed inward (`interface → infrastructure → application → domain`).

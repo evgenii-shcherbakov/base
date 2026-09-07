@@ -16,7 +16,7 @@ export async function POST(
   }
 
   try {
-    const authMetadata = await authService.getStreamAuthMetadata();
+    const authMetadata = await authService.getAuthMetadata();
     const id = (await params).id;
 
     return handleStreamFileUpload(

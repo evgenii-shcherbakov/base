@@ -1,11 +1,13 @@
-import { NatsModule, NatsUserTransport } from '@backend/nats';
+import { CacheService } from '@backend/cache';
 import { PgModule } from '@backend/pg';
+import { RedisModule, RedisUserTransport } from '@backend/event-bus-redis';
 import { CryptoModule } from '@modules/crypto/crypto.module';
 import { Module } from '@nestjs/common';
 import { UserCreateOneUseCase } from './application/use-cases/user.create-one.use-case';
 import { UserDeleteUseCase } from './application/use-cases/user.delete.use-case';
 import { UserGetUseCase } from './application/use-cases/user.get.use-case';
 import { UserUpdateOneUseCase } from './application/use-cases/user.update-one.use-case';
+import { USER_CACHE } from './domain/constants/user.tokens';
 import { UserRepository } from './domain/repositories/user.repository';
 import { PgUserEntity } from './infrastructure/pg/entities/pg.user.entity';
 import { PgUserRepositoryImpl } from './infrastructure/pg/repositories/pg.user.repository.impl';
@@ -14,7 +16,7 @@ import { GrpcUserController } from './interface/grpc/grpc.user.controller';
 @Module({
   imports: [
     PgModule.forFeature(PgUserEntity),
-    NatsModule.forFeature({ EventBus: NatsUserTransport.EventBus }),
+    RedisModule.forFeature({ EventBus: RedisUserTransport.EventBus }),
     CryptoModule,
   ],
   providers: [
@@ -22,12 +24,20 @@ import { GrpcUserController } from './interface/grpc/grpc.user.controller';
       provide: UserRepository,
       useClass: PgUserRepositoryImpl,
     },
+    {
+      // The global CacheService bound to this module's namespace, so a use-case caches under
+      // `cache:auth:user:<id>` without repeating the segment — and `deleteByPrefix()` with no
+      // argument clears exactly this scope.
+      provide: USER_CACHE,
+      useFactory: (cacheService: CacheService): CacheService => cacheService.scope('user'),
+      inject: [CacheService],
+    },
     UserGetUseCase,
     UserDeleteUseCase,
     UserCreateOneUseCase,
     UserUpdateOneUseCase,
   ],
   controllers: [GrpcUserController],
-  exports: [UserRepository],
+  exports: [UserRepository, USER_CACHE],
 })
 export class UserModule {}

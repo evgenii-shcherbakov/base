@@ -2,14 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Documentation layout.** Facts have a single owner: this file covers the monorepo as a whole,
+`backend/CLAUDE.md` the backend conventions, and each app/package its own internals. Rationale for
+structural decisions ("why it was built this way") lives in [`docs/adr/`](docs/adr/README.md) and is
+linked from the rule it explains — read an ADR only when the *why* matters. When something changes,
+update the one owning file rather than restating it in a second one.
+
 ## Conversation compaction policy
 
 When compacting the conversation, you MUST preserve:
 
 - **Current working scope**: which service/package is being edited right now, and in which worktree/branch.
 - **All proto-contract changes** (`packages/proto`) and the reason for each. Contracts are cross-service — losing them breaks consumers.
-- **Added/changed NATS subjects** and the shape of their payloads.
-- **Database schema changes and migrations** (FinTech — critical, never collapse these).
+- **Added/changed event-bus events** (queues/subjects) and the shape of their payloads.
+- **Database schema changes and migrations** — critical, never collapse these.
 - **The list of changed files with status**: done / in-progress / still needs work.
 - **Open failing tests** and any fixes that were found.
 - **Architectural decisions made**, with their rationale.
@@ -24,19 +30,23 @@ You may compact aggressively:
 
 ## Overview
 
-Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microservices (backend) and a Next.js/Refine admin panel (frontend), wired together by Protobuf codegen and a NATS JetStream event bus. Requires Node ≥22.22, pnpm 11.0.9, and `protoc` (only for proto compilation).
+Personal-website monorepo: a Turborepo + pnpm workspace of NestJS gRPC microservices (backend) and a Next.js/Refine admin panel (frontend), wired together by Protobuf codegen and a Redis/BullMQ event bus. Requires Node ≥22.22, pnpm 11.0.9, and `protoc` (only for proto compilation).
 
 ## Workspaces & naming
 
 `pnpm-workspace.yaml` globs four package roots; package names follow a strict convention used everywhere in turbo `--filter` and imports:
 
 - `backend/apps/*` → `backend.<name>` (deployable services: `api-gateway`, `auth`, `storage`)
-- `backend/packages/*` → `@backend/<name>` (shared backend libs: `common`, `grpc`, `nats`, `pg`, `mongo`, `proto`, `event-bus`)
+- `backend/packages/*` → `@backend/<name>` (shared backend libs: `cache`, `common`, `grpc`, `pg`, `mongo`, `proto`, `event-bus`, `event-bus-nats`, `event-bus-redis`)
 - `frontend/apps/*` → `frontend.<name>` (`admin`)
 - `frontend/packages/*` → `@frontend/<name>` (`proto`)
 - `packages/*` → `@packages/<name>` (cross-stack: `common`, `proto`, `compiler-utils`, `configs`)
 
 Inside an app, TS path aliases are `@/*` (src), `@modules/*`, `@common/*`, and `@compiler/*` (proto package only). Cross-package imports always use the `@backend/…`/`@packages/…` names, never relative paths.
+
+**Dependency versions:** a dependency more than one workspace declares is pinned once, in the `catalog:` block of `pnpm-workspace.yaml`, and each manifest asks for it as `"lodash": "catalog:"`. The workspace still declares what it imports — that is what the tsdown factory and `import-x/no-extraneous-dependencies` read — while the version cannot drift between packages. Bump a shared version in `pnpm-workspace.yaml`, not in a manifest; a dependency only one workspace uses keeps its literal version there. This is not `overrides` (further down the same file): a catalog resolves what a workspace *asks* for, an override rewrites what the whole tree *gets*, transitive dependencies included.
+
+**Build config:** every package that ships a `dist/` builds with tsdown through one shared factory — `nodePackageConfig(import.meta.url)` from `@packages/configs/tsdown/package.config.mjs`. It reads the package's **own** `package.json` to decide what stays external, so an import the package does not declare gets bundled into `dist/` instead of being required at runtime. Declare the dependency; don't hand-extend `neverBundle`.
 
 **Layering invariant:** `@packages/*` are framework-agnostic — imported by **both** backend and the Next frontend, so keep Nest/React out of them. `@backend/*` may depend on Nest. Dependencies flow downward: proto/common → packages → apps.
 
@@ -49,9 +59,13 @@ pnpm dev                      # all backend + frontend in watch mode
 pnpm dev:backend.auth         # one service (also .api-gateway, .storage, frontend.admin)
 pnpm build                    # build everything (runs ^compile then ^build)
 pnpm build:backend.auth       # one service
+pnpm test                     # unit suites of every package that has them
+pnpm test:e2e                 # e2e suites; each skips itself when its server is unreachable
+pnpm typecheck                # tsc --noEmit for the three codegen packages (see below)
 pnpm lint                     # eslint --fix across workspaces
 pnpm format                   # prettier
-pnpm docker:local             # postgres + nats only (for local dev against real infra)
+pnpm docker:local             # postgres + redis only (for local dev against real infra)
+pnpm docker:local:d           # the same, detached
 pnpm docker                   # full stack in prod mode
 pnpm gen:package              # scaffold a new package via turbo generator (packages only; apps are hand-made)
 ```
@@ -60,21 +74,32 @@ pnpm gen:package              # scaffold a new package via turbo generator (pack
 
 ```bash
 pnpm compile:proto            # .proto → @backend/proto, @frontend/proto, @packages/proto
-pnpm compile:event-bus        # EventBusStrategy → @backend/event-bus + @backend/nats (generated/)
+pnpm compile:event-bus        # EventBusStrategy → @backend/event-bus + the two transport packages
+pnpm compile:env-docs         # zod env schemas → the env tables in CLAUDE.md files
+pnpm check:env-docs           # the same, read-only: fails when a table is stale
 pnpm compile                  # run every package's compile task
 ```
 
 `compile:proto` needs a `protoc` binary (override with env `PROTOC_PATH`); set `GRPC_COMPILER_CONTEXT=backend|frontend|all` (default `all`) to generate only some targets.
 
-**Database migrations** (run inside a backend service dir, e.g. `backend/apps/auth`):
+Database migrations run inside a service directory — see `backend/CLAUDE.md`.
 
-```bash
-pnpm migrate:new              # generate a new MikroORM migration from entity diff
-pnpm migrate                  # run pending migrations + data-seeding tasks
-pnpm migrate:tasks            # run only the data-seeding tasks (migrator/tasks/)
-```
+**Tests.** Jest is configured per package that has tests. Run repo-wide from the root (`pnpm test`,
+`pnpm test:e2e`, scoped with `--filter=<pkgname>`) or inside a package (`pnpm test:watch`, single
+file: `pnpm test -- path/to/file.spec.ts`). A package with no `*.spec.ts` under `src/` has no
+suite — there is no central list. Both turbo tasks depend on `^build`, because specs import
+sibling packages through their built `dist`; `test:e2e` is `cache: false` — whether a suite runs or
+skips depends on a reachable broker, which turbo cannot hash. The backend apps carry a jest config
+but no specs yet, so their `test`/`test:e2e` scripts pass `--passWithNoTests` to keep the repo-wide
+run green — **drop the flag from a service the moment it gets its first spec.**
 
-**Tests, lint & strictness:** Jest is configured per backend app (`pnpm test`, `pnpm test:watch`, single file: `pnpm test -- path/to/file.spec.ts`), but **no `*.spec.ts` files exist yet** — there is currently no test suite. The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`), so the linter won't catch those. TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin but **off** for backend apps and `@backend/packages/*`.
+**Lint & strictness.**
+
+- The backend ESLint preset is deliberately loose (off: `no-floating-promises`, `no-unsafe-*`, `no-unused-vars`, `no-explicit-any`) — the linter won't catch those.
+- The one substantive rule it enforces is `import-x/no-extraneous-dependencies`: a package must declare what it imports, and `src/` may not use devDependencies. The admin's `nextConfig` carries it too.
+- No ESLint config at all: `@packages/{common,proto,compiler-utils,configs}`, `@backend/proto`, `@frontend/proto`.
+- TypeScript `strict` is **on** for `@packages/*` / `@frontend/*` / admin, **off** for backend apps and `@backend/packages/*`.
+- **`compiler/` code is type-checked by nothing unless the package says so.** `tsx` strips types without checking them, and a `build` covers `src/` alone (`@packages/env-docs` has no build at all). The three codegen packages — `@packages/proto`, `@backend/event-bus`, `@packages/env-docs` — therefore declare a `typecheck` task running `tsc --noEmit` over their whole tsconfig; a fourth compiler needs the same task, not the assumption that `compile` covers it.
 
 ## Code navigation (LSP vs grep)
 
@@ -87,74 +112,64 @@ A TypeScript LSP (the `typescript-lsp` plugin) may be available in a session. Tw
 
 `.proto` files in `packages/proto/pkg/` are the single source of truth for all cross-service contracts. The custom compiler in `packages/proto/compiler/` (run by `pnpm compile:proto`) parses them and emits three flavors via separate adapters:
 
-- **Nest adapter** → `backend/packages/proto/src` (`@backend/proto`): typed message namespaces (`NestAuth`, `NestCommon`, `NestStorage`, `NestGoogle`) plus per-service **Transports** (e.g. `GrpcUserTransport`) and controller/client interface types (`GrpcUserServiceController`, `GrpcUserServiceClient`).
-- **Client adapter** → `frontend/packages/proto/src` (`@frontend/proto`).
-- **Browser adapter** → `packages/proto/src` (`@packages/proto`): browser-safe shared types.
+- **Nest adapter** → `backend/packages/proto/src` (`@backend/proto`) — the backend services.
+- **Client adapter** → `frontend/packages/proto/src` (`@frontend/proto`) — the admin frontend, which should call the **`Admin`** repositories.
+- **Browser adapter** → `packages/proto/src` (`@packages/proto`) — browser-safe shared types.
 
-Generated `src/` is committed. Edit the `.proto`, recompile, then `build`. A Transport (`GrpcXTransport`) bundles `.service` (the gRPC service-name string, which also serves as the DI token for `@InjectGrpcService`), `.ControllerMethods()` (class decorator that registers gRPC handlers), and message types — these are how controllers and clients bind to a service.
+Each per-service contract comes in audience variants (base / `Admin` / `Web` / `Public`). What each
+target exports is documented in that package's own `CLAUDE.md`.
 
-**Generated exports by target** (each per-service contract comes in audience variants — base / `Admin` / `Web` / `Public`):
-- `@backend/proto` → `Nest*` namespaces + `Grpc<X>Transport` / `Grpc<X>ServiceController` / `Grpc<X>ServiceClient`.
-- `@frontend/proto` → `Client*` namespaces + `Grpc<X>Repository`. The admin frontend should call the **`Admin`** repositories.
+Generated `src/` is committed: edit the `.proto`, `pnpm compile:proto`, then `build`. At runtime the
+gRPC loader reads the original `.proto` from `node_modules/@packages/proto/pkg`, so `pkg/` is a
+runtime dependency of the services, not just a codegen input. Both codegen compilers (proto and
+event-bus) share primitives from `@packages/compiler-utils` (Pug templating + ts-morph import handling).
 
-At runtime the gRPC loader reads the original `.proto` from `node_modules/@packages/proto/pkg`, so `pkg/` is a runtime dependency of the services, not just a codegen input. Both codegen compilers (proto and event-bus) share primitives from `@packages/compiler-utils` (Pug templating + ts-morph import handling).
+## Event-bus codegen pipeline
 
-## Event-bus codegen pipeline (NATS events)
+A second custom compiler generates the typed event bus. The single source of truth is the
+**`EventBusStrategy` interface** in `backend/packages/event-bus/src/strategy/index.ts`, shaped
+`[host][service][event]: PayloadType` (e.g. `auth.user.create: NestAuth.User`). Add an event by
+adding a key there, run `pnpm compile:event-bus`, then `build`; every target's `src/generated/` is
+committed and never hand-edited.
 
-A second custom compiler, parallel to the proto one, generates the typed event bus. The single source of truth is the **`EventBusStrategy` interface** in `backend/packages/event-bus/src/strategy/index.ts`, shaped `[host][service][event]: PayloadType` (e.g. `auth.user.create: NestAuth.User`). Payloads are usually proto types; custom non-proto payloads live in `src/strategy/events/` (e.g. `StorageObjectParentUpdateEvent`).
+Three packages, each compiling its own generated code in its own turbo task:
 
-The compiler in `backend/packages/event-bus/compiler/` (run by `pnpm compile:event-bus`) parses that interface with **ts-morph** (not protobufjs) and emits in two stages:
+| Package | Role |
+|---|---|
+| `@backend/event-bus` | Strategy + compiler. Emits the abstract `<Service>EventBus` ports and `EventBusHost`. Owns the naming rules and the bus-wide semantics. |
+| `@backend/event-bus-redis` | **The live transport** (Redis/BullMQ) — `auth` and `storage` run on it. |
+| `@backend/event-bus-nats` | The dormant alternative (NATS JetStream) — generated, built and tested, wired into no service. |
 
-- **Abstract buses** → `@backend/event-bus/src/generated/index.ts`: a base `EventBus`, one abstract `<Service>EventBus` per service with `emit<Event>(event)` + `emitMany<Event>(events)`, and the `EventBusHost` enum.
-- **Nats adapter** (the only adapter, pug-templated) → `@backend/nats/src/generated/index.ts`: per-service `Nats<Service>Transport` (event-pattern constants, a `.ControllerMethods()` class decorator, and `.EventBus` = the abstract class), subscriber interfaces `Nats<Service>EventController`, cross-host handler interfaces `Nats<Service><Event>EventHandler` (method `on<Service><Event>`), and `NatsClientFactory` (maps each abstract bus → its concrete `NatsJetStreamClientProxy`-backed impl).
+Each package's `CLAUDE.md` covers its internals; the decisions behind the split are ADRs
+[0001](docs/adr/0001-redis-as-live-transport.md)–[0007](docs/adr/0007-natsjs-v3-direct.md).
 
-**Naming is service-scoped, not host-scoped**: generated class/interface names (`<Service>EventBus`, `Nats<Service>Transport`, `Nats<Service>EventController`, …) are derived from the service name alone — the host is dropped. This means service names must stay unique **across all hosts** in `EventBusStrategy`, or the compiler emits colliding class names.
+## Env-table codegen pipeline
 
-Subjects are kebab-cased `host-service-event` (`auth-user-create`); JetStream streams stay host-scoped too — `host-service-stream` (`auth-user-stream`) — even though the generated class/interface names (bus, transport, controller) dropped the host prefix (see naming note above). Both packages' `src/generated/` are committed — edit the strategy, `pnpm compile:event-bus`, then `build`.
+A third generator, `@packages/env-docs`, keeps documentation from restating what a zod schema
+already says. Every environment variable is owned by the `validateEnv` argument that declares it,
+and **[docs/env.md](docs/env.md) is the one place the tables live** — read on demand, like
+`docs/adr/`, so no `CLAUDE.md` carries a deployment checklist it would load into every session.
+`pnpm compile:env-docs` rewrites the marked regions there; `pnpm check:env-docs` fails when a table
+and its schema have drifted, and the docs hook runs it on any edit to a file that validates env, to
+a workspace manifest, or to the page itself. Prose around the markers is untouched — the generator
+owns values, hand-written text owns reasons. It also enforces two invariants that fail the build:
+every `validateEnv` call is named by some marker, and the service → packages map on that page
+matches the `workspace:*` dependency closure. The marker syntax and the parser's deliberate
+strictness are in that package's `CLAUDE.md`; the rationale is
+[ADR-0008](docs/adr/0008-generated-env-tables.md).
 
-**Runtime wiring (NATS JetStream):**
-- **Emit**: a feature module imports `NatsModule.forFeature({ EventBus: Nats<X>Transport.EventBus })`, binding the abstract bus to its concrete client; use-cases inject the abstract `<X>EventBus` and call `emit<Event>` after a successful write.
-- **Subscribe**: a controller under `interface/nats/*.controller.ts`, decorated `@NatsController()` + `Nats<X>Transport.ControllerMethods()`, implements `Nats<X>EventController`. To consume an event owned by **another** host, implement that `Nats…EventHandler` interface and decorate the method with `@NatsEvent(Nats<Other>Transport.<CONSTANT>)` (see `NatsStorageObjectController` consuming `auth-user-create`).
-- **Streams**: `ControllerMethods()` / `@NatsEvent` register subjects in `globalStreamRegistry`; `NatsModule.forRoot({ host: EventBusHost.X })` reads it to declare JetStream streams at bootstrap.
-- **Delivery**: at-least-once (`manualAck`, `maxDeliver` 10, `maxAckPending` 1) — subscriber handlers must be idempotent.
+## Backend
 
-## Backend service architecture (hexagonal / use-case)
+Service architecture (4-layer hexagonal / use-case), the `Either` flow, the migrator sub-app and the
+shared package conventions are in **`backend/CLAUDE.md`**. `backend/apps/auth` is the reference
+implementation; `backend.api-gateway` is a deliberate two-layer exception.
 
-This is a **clean-architecture redesign** (branch `feat/use-case-architecture`). **`backend/apps/auth` is the reference implementation** — match its structure for new code. Each service `src/modules/<feature>/` has four layers:
-
-```
-domain/          # abstract contracts: repositories/*.repository.ts, services/*.service.ts,
-                 #   interfaces, entities — depend on nothing concrete
-application/     # use-cases/*.use-case.ts (one class, one execute()), DTOs
-infrastructure/  # concrete impls: pg/repositories/*.repository.impl.ts, pg/entities,
-                 #   pg/mappers, services/*.service.impl.ts, configs
-interface/       # adapters in: grpc/*.controller.ts, cron/*.scheduler.ts (+ web/rpc in gateway)
-```
-
-Key conventions, all visible in the auth module:
-
-- **DI binds abstract → impl**: the module lists `{ provide: UserRepository, useClass: PgUserRepositoryImpl }`. Use-cases and controllers depend on the abstract class (`domain/`), never the impl. The data-layer **contracts** (`DatabaseRepository`, `MigrationService`, `DatabaseRunnerService`, and base CRUD use-cases `GetUseCase` / `CreateUseCase` / …) live in `@backend/common`; concrete impls live in `@backend/pg` (**active**) and `@backend/mongo` (**dormant — unused; resolves the README's "Mongoose + MikroORM" ambiguity**). Service repositories extend `DatabaseRepository<...>` and service CRUD use-cases extend the abstract bases.
-- **Proto types are domain-safe unless `Grpc`-prefixed.** Every `@backend/proto` export *without* a `Grpc` prefix — the `Nest*` message namespaces (`NestAuth`, `NestCommon`, `NestStorage`, `NestGoogle`) — is a pure data contract and may be imported from **any** layer, `domain/` included. The `Nest` prefix names the generated adapter, not a framework dependency: these are plain TS types with no Nest/RxJS/DI at runtime (domain repositories already extend `NestCommon.Entity`). Only the `Grpc*` exports (`Grpc<X>Transport`, `Grpc<X>ServiceController`, `Grpc<X>ServiceClient`) carry Nest decorators, RxJS `Observable`s and DI tokens — those are framework-bound and stay in `interface/` / `infrastructure/`. Rule of thumb: `Nest*` = domain-safe, `Grpc*` = framework-only.
-- **Errors flow as `Either` monads** (`@sweet-monads/either`), not thrown. Use-cases return `Promise<Either<Error, T>>`; controllers unwrap with `GrpcRxPipe` (`.unwrapEither`, `.toArrayItems`) from `@backend/grpc`.
-- **gRPC controllers** are thin: implement the generated `Grpc<X>ServiceController`, decorate with `@GrpcController()` + `Grpc<X>Transport.ControllerMethods()`, and delegate each method to a use-case via `from(useCase.execute(...)).pipe(GrpcRxPipe.…)`.
-- **Domain events** are emitted via injected abstract `@backend/event-bus` buses (e.g. `UserEventBus.emitCreate`) after a successful write, and consumed by `interface/nats/*.controller.ts` subscribers — see *Event-bus codegen pipeline* above.
-- **Bootstrap** (`main.ts`) is uniform: create the Nest app, then `connectMicroservice` for both `GRPC_MICROSERVICE_OPTIONS` (`@backend/grpc`) and `NATS_MICROSERVICE_OPTIONS` (`@backend/nats`). `app.module.ts` wires `GrpcModule.forRoot({ host })`, `NatsModule.forRoot({ host })`, `PgModule.forRoot({ database })`, and `ConfigModule` loading `config.ts`.
-- **Config** (`config.ts`) spreads `commonConfig()` from `@backend/common` and validates service-specific env with `validateEnv(zod schema)` from `@packages/common`.
-- **Data layer**: entity IDs are application-generated monotonic **ULIDs** (`pgId`), not DB sequences/UUIDs (so `id` is a sortable string); table/database names come from `@packages/common` `database/enums`; every gRPC handler runs inside a per-request MikroORM `RequestContext` (transactional isolation via `PgRequestInterceptor`).
-- **gRPC topology**: the host → URL → services map is centralized in `@backend/grpc` `grpcConfig` (driven by `*_GRPC_URL` env vars). Adding a service or host means editing it **and** the env var.
-- **Layer direction is lint-enforced**: `auth` and `storage` (plus `@backend/pg`/`mongo`/`nats`) wire a shared `layerGuard()` flat-config helper (`@packages/configs/eslint/layer-guard.mjs`) alongside `nestConfig` in their `eslint.config.mjs`. It forbids outward-to-inward imports (`domain` can't import `application`/`infrastructure`/`interface`, etc.) by path segment, regardless of nesting depth; `*.module.ts`/`main.ts` composition roots are exempt.
-
-### Migrations & the migrator sub-app
-
-Backend services with a DB are NestJS **monorepo projects** (`nest-cli.json` defines `service` + `migrator` apps). `src/migrator/` is a standalone `nest-commander` entrypoint: `migrations/` holds MikroORM SQL migrations (+ `.snapshot-*.json`), and `tasks/` holds idempotent data-seeding tasks (`implements MigrationTask` with an `up()`, e.g. `create-admin.task.ts`). Production startup runs `node dist/migrator/main -- postgres-migration && node dist/main`.
-
-A data task may call **other services over gRPC** by declaring `appClientStrategy` in the migrator module (e.g. storage's `create-root-folders` backfills via the auth `GrpcUserService`). A fresh deployment seeds its first admin via the `create-admin` task from `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
-
-## api-gateway
-
-The edge service: it serves REST + Swagger **and** runs as a gRPC server (`GrpcModule.forRoot({ host: 'apiGateway' })` — the admin frontend calls it over gRPC), terminating external requests and **proxying to internal gRPC services**. Controllers are split by audience under `modules/<feature>/interface/grpc/` (`*.web.controller.ts`, `*.admin.controller.ts`, `*.public.controller.ts`); each delegates to an `application/services/*.proxy.service.ts` that injects a generated gRPC client via `@InjectGrpcService(GrpcXTransport.service)` and calls `firstValueFrom(client.method(req).pipe(GrpcRxPipe.rpcException))`. Authorization is a global `CommonModule` exposing `AccessService` plus per-controller access decorators (`@PublicGrpcController()` / `@DefaultGrpcController()` / `@AdminGrpcController()`) and unary/stream guards over gRPC metadata.
-
-> **Note:** Its feature modules are **two-layer** (`modules/<feature>/{interface,application}` only — no `domain`/`infrastructure`, since the gateway has no persistence); cross-cutting auth lives in `src/common/`. This differs from the four-layer `auth`/`storage` services on purpose — don't add domain/infra layers here.
+**Caching** is `@backend/cache`: one `CacheStore` port with a Redis and an in-memory adapter behind a
+single `CacheModule`, injected as `CacheService`. Unlike the event bus it is *not* split per
+transport — the reasoning is [ADR-0009](docs/adr/0009-cache-one-package-driver-switch.md), the
+internals are in that package's `CLAUDE.md`. `backend.auth` is its one consumer: it caches the user
+behind the gateway's per-request access check, and evicts on every user write — why there and not in
+the gateway's guard is [ADR-0011](docs/adr/0011-identity-cached-in-auth.md).
 
 ## Frontend admin
 

@@ -1,10 +1,5 @@
 import { ConfigService } from '@/common/services/config.service';
-import {
-  ClientAuth,
-  GrpcAuthPublicRepository,
-  GrpcTempCodeWebRepository,
-  GrpcUserWebRepository,
-} from '@frontend/proto';
+import { ClientAuth, GrpcAuthPublicRepository, GrpcUserWebRepository } from '@frontend/proto';
 import { Metadata } from '@grpc/grpc-js';
 import { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 import { cookies } from 'next/headers';
@@ -12,7 +7,6 @@ import { cookies } from 'next/headers';
 export class AuthService {
   private readonly cookieConfig: Partial<ResponseCookie>;
   private readonly authRepository: GrpcAuthPublicRepository;
-  private readonly tempCodeRepository: GrpcTempCodeWebRepository;
   private readonly userRepository: GrpcUserWebRepository;
 
   constructor(private readonly configService: ConfigService) {
@@ -23,7 +17,6 @@ export class AuthService {
     };
 
     this.authRepository = new GrpcAuthPublicRepository(configService.getGrpcUrl());
-    this.tempCodeRepository = new GrpcTempCodeWebRepository(configService.getGrpcUrl());
     this.userRepository = new GrpcUserWebRepository(configService.getGrpcUrl());
   }
 
@@ -179,15 +172,6 @@ export class AuthService {
     const accessToken = await this.getAccessTokenWithRefresh();
     const meta = new Metadata();
     meta.set('access-token', accessToken);
-    return meta;
-  }
-
-  async getStreamAuthMetadata() {
-    const accessToken = await this.getAccessTokenWithRefresh();
-    const meta = new Metadata();
-    meta.set('access-token', accessToken);
-    const { code } = await this.tempCodeRepository.generate({}, meta);
-    meta.set('stream-code', code);
     return meta;
   }
 }

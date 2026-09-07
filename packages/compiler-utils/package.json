@@ -15,13 +15,15 @@
   },
   "devDependencies": {
     "@packages/configs": "workspace:*",
-    "@types/pug": "2.0.10",
-    "ts-morph": "28.0.0",
-    "pug": "3.0.4"
+    "@types/pug": "catalog:",
+    "prettier": "catalog:",
+    "ts-morph": "catalog:",
+    "pug": "catalog:"
   },
   "peerDependencies": {
-    "@types/pug": "2.0.10",
-    "ts-morph": "28.0.0",
-    "pug": "3.0.4"
+    "@types/pug": "catalog:",
+    "prettier": "catalog:",
+    "ts-morph": "catalog:",
+    "pug": "catalog:"
   }
 }

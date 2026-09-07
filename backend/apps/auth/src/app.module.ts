@@ -1,7 +1,8 @@
+import { CacheModule } from '@backend/cache';
 import { EventBusHost } from '@backend/event-bus';
 import { GrpcModule } from '@backend/grpc';
-import { NatsModule } from '@backend/nats';
 import { PgModule } from '@backend/pg';
+import { RedisModule } from '@backend/event-bus-redis';
 import { AuthModule } from '@modules/auth/auth.module';
 import { TempCodeModule } from '@modules/temp-code/temp-code.module';
 import { UserModule } from '@modules/user/user.module';
@@ -19,7 +20,8 @@ import { config } from './config';
     ConfigModule.forRoot({ isGlobal: true, load: [config] }),
     PgModule.forRoot({ database: Database.AUTH }),
     GrpcModule.forRoot({ host: 'auth' }),
-    NatsModule.forRoot({ host: EventBusHost.AUTH }),
+    RedisModule.forRoot({ host: EventBusHost.AUTH }),
+    CacheModule.forRoot({ namespace: 'auth' }),
     AuthModule,
     TempCodeModule,
     UserModule,

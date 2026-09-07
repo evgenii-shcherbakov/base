@@ -37,10 +37,13 @@ src/
 
 `PgRepositoryImpl<Doc, Entity, …>` `implements DatabaseRepository` over an `EntityManager`. `convertUpdate` maps `UpdateOf` `{ set, remove, inc }` → `assign` / `null` / `+=`. `updateMany`/`deleteMany` page in batches of 100; `bulkUpdate` groups by filter key and `$in`s. Returns `Either`; misses → `NotFoundException`; rows mapped via `PgMapper`.
 
+`saveOne`/`saveMany` additionally run their `catch` through `toRepositoryError`, which turns a MikroORM `UniqueConstraintViolationException` into a `ConflictException`. Callers can then tell "this row already exists" from a real write failure — an at-least-once event handler treats the former as success and must retry on the latter (see `StorageObjectCreateRootFolderUseCase` in `backend.storage`).
+
 ## Entities & IDs
 
 - `PgEntity<OptProps>` — abstract base with `id`, `createdAt`, `updatedAt` (auto `onUpdate`). Decorate concretes with `@PgSchema({ tableName })` (use a `*DatabaseEntity` enum value from `@packages/common`) and `@PgProp.*`.
 - **IDs are application-generated monotonic ULIDs** (`pgId()` from `ulid`), set in the entity default — not DB sequences/UUIDs. So `id` is a sortable string (matches `NestCommon.Entity.id: string`).
+- `PgProp.Date` pins `timestamptz` **`length: 6`** and `PgProp.Enum` pins **`columnType: 'text'`** so that the metadata matches what `auth` and `storage` already hold. Do not "tidy" these to `length: 3` / `varchar`: every `migrate:new` in both services would then regenerate the same `alter column … type` diff forever, and applying it rewrites the tables under an ACCESS EXCLUSIVE lock and rounds stored timestamps to milliseconds — for changes Postgres treats as no-ops.
 
 ## Migrations (two kinds)
 
@@ -52,4 +55,3 @@ src/
 pnpm build / dev / lint / format / reset
 ```
 - `lodash` is declared in this package's deps, with `@types/lodash` in devDeps.
-- cjs-only; consumers resolve `dist/`, rebuild after changes (turbo `^build`).

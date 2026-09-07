@@ -2,7 +2,12 @@
   "$schema": "https://turbo.build/schema.json",
   "concurrency": "10",
   "envMode": "loose",
-  "globalDependencies": ["**/.env"],
+  // `packages/configs/**` is global because its presets are read from outside the packages that
+  // use them: a package `turbo.json` lists its own `tsdown.config.mts` in `inputs`, but that file
+  // is now a one-liner delegating to `@packages/configs/tsdown/package.config.mjs`, whose edits
+  // would otherwise never reach a build hash. The presets change rarely, so the extra
+  // invalidations are cheap.
+  "globalDependencies": ["**/.env", "packages/configs/**"],
   "tasks": {
     "dev": {
       "cache": false,
@@ -16,6 +21,32 @@
       "dependsOn": ["^compile", "^build"]
     },
     "prod": {},
+    "test": {
+      // Not cached: the whole run takes seconds, so a replay saves nothing worth the
+      // question "did these tests actually run against this environment?".
+      "cache": false,
+      // Inert while `cache` is false, and kept ready for the day it is not. envMode is
+      // loose, so nothing enters the hash on its own, while the config modules validate env
+      // at import time and the config specs assert its defaults. NODE_ENV/PORT come from
+      // `NodeValidationSchema`, which every suite pulls in through @backend/common; the
+      // prefixes cover the two transport packages. Keep the list here rather than in a
+      // package turbo.json: a package-level task replaces this field instead of extending
+      // it, so a local `env` would silently drop the entries above.
+      "env": ["NODE_ENV", "PORT", "REDIS_*", "NATS_*", "CACHE_*"],
+      "dependsOn": ["^build"]
+    },
+    // Cacheable, unlike lint and format: it writes nothing and is a pure function of the sources
+    // turbo already hashes. Only workspaces whose code no build step type-checks need it — a
+    // package whose `build` runs tsc or tsdown is checked there.
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test:e2e": {
+      // Whether the suite runs or skips depends on a broker being reachable, which is not an
+      // input turbo can hash — a cached result would replay the wrong verdict.
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
     "format": {
       "cache": false
     },

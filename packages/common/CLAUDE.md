@@ -11,7 +11,7 @@ Single barrel — everything re-exports through `src/index.ts`. Always import vi
 ## Layout & exports
 
 - `database/enums` — canonical database + table/collection names. `Database` (`auth` | `main` | `storage`) plus per-DB entity-name enums: `CommonDatabaseEntity`, `AuthDatabaseEntity`, `StorageDatabaseEntity`, `MainDatabaseEntity`. **Source of truth for table names** — entities, migrations, and `@backend/pg`/`@backend/mongo` modules key off these; don't hardcode strings.
-- `validation` — env handling. `validateEnv(zodShape)` parses `process.env` and **throws** `Env validation failed` on error (used by every service `config.ts` and package config). Prebuilt shapes `NodeValidationSchema` (PORT, NODE_ENV) and `DatabaseValidationSchema` (DATABASE_URL); type helper `SchemaTypeOf<Shape>`; derived `NodeEnvironment` / `DatabaseEnvironment`.
+- `validation` — env handling. `validateEnv(zodShape)` parses `process.env` and **throws** `Env validation failed` on error (used by every service `config.ts` and package config). Prebuilt shapes `NodeValidationSchema` (`PORT`, `NODE_ENV`) and `DatabaseValidationSchema` (`DATABASE_URL`), spread into other packages rather than redeclared — their types and defaults are tabulated in [docs/env.md](../../docs/env.md); type helper `SchemaTypeOf<Shape>`; derived `NodeEnvironment` / `DatabaseEnvironment`.
 - `stream` — `sendToWritable` / `sendToGrpcStream`: backpressure-aware promise wrappers around `Writable.write` / gRPC client streams (resolve on write or `drain`, reject on `error`).
 - `utils/regexp` — file-extension regexes (`PROTO_EXT_REG_EXP`, `TS_EXT_REG_EXP`, `PUG_EXT_REG_EXP`) used by the codegen compilers.
 

@@ -9,12 +9,10 @@ import { GetListDto } from '@common/application/dto/get-list.dto';
 import { IdFieldDto } from '@common/application/dto/id-field.dto';
 import { GetUrlMapShortDto } from '@common/application/dto/storage/get-url-map.dto';
 import { AdminGrpcController } from '@common/interface/grpc/decorators/grpc.controller.decorator';
-import { GrpcStreamMethod } from '@common/interface/grpc/decorators/grpc.stream-method.decorator';
 import { VideoCreateManyDto } from '@modules/video/application/dto/video.create-many.dto';
 import { VideoCreateOneDto } from '@modules/video/application/dto/video.create.dto';
 import { VideoUpdateByIdDto } from '@modules/video/application/dto/video.update.dto';
 import { VideoProxyService } from '@modules/video/application/services/video.proxy.service';
-import { Observable } from 'rxjs';
 
 @AdminGrpcController()
 @GrpcVideoAdminTransport.ControllerMethods()
@@ -42,20 +40,13 @@ export class GrpcVideoAdminController implements GrpcVideoAdminServiceController
   }
 
   @ValidateGrpcPayload(VideoCreateOneDto)
-  createOne(request: NestStorage.VideoCreateOne): Promise<NestStorage.Video> {
+  createOne(request: NestStorage.VideoCreateOne): Promise<NestStorage.VideoCreated> {
     return this.videoService.createOne(request);
   }
 
   @ValidateGrpcPayload(VideoCreateManyDto)
-  createMany(request: NestStorage.VideoCreateMany): Promise<NestStorage.VideoArray> {
+  createMany(request: NestStorage.VideoCreateMany): Promise<NestStorage.VideoCreatedArray> {
     return this.videoService.createMany(request);
-  }
-
-  @GrpcStreamMethod()
-  uploadOne(
-    request$: Observable<NestStorage.UploadOneShort>,
-  ): Observable<NestStorage.VideoUploadResponse> {
-    return this.videoService.uploadOne(request$);
   }
 
   @ValidateGrpcPayload(VideoUpdateByIdDto)

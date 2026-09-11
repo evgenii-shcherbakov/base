@@ -12,7 +12,6 @@ import { VideoGetDownloadMapUseCase } from '@modules/video/application/use-cases
 import { VideoGetUrlMapUseCase } from '@modules/video/application/use-cases/video.get-url-map.use-case';
 import { VideoGetUseCase } from '@modules/video/application/use-cases/video.get.use-case';
 import { VideoUpdateUseCase } from '@modules/video/application/use-cases/video.update.use-case';
-import { VideoUploadOneUseCase } from '@modules/video/application/use-cases/video.upload-one.use-case';
 import { from, Observable } from 'rxjs';
 
 @GrpcController()
@@ -26,7 +25,6 @@ export class GrpcVideoController implements GrpcVideoServiceController {
     private readonly updateUseCase: VideoUpdateUseCase,
     private readonly createOneUseCase: VideoCreateOneUseCase,
     private readonly createManyUseCase: VideoCreateManyUseCase,
-    private readonly uploadOneUseCase: VideoUploadOneUseCase,
   ) {}
 
   getUrlMap({ ip, ...query }: NestStorage.GetUrlMap): Observable<NestCommon.StringMap> {
@@ -51,11 +49,11 @@ export class GrpcVideoController implements GrpcVideoServiceController {
     );
   }
 
-  createOne(request: NestStorage.VideoCreateOne): Observable<NestStorage.Video> {
+  createOne(request: NestStorage.VideoCreateOne): Observable<NestStorage.VideoCreated> {
     return from(this.createOneUseCase.execute(request)).pipe(GrpcRxPipe.unwrapEither);
   }
 
-  createMany(request: NestStorage.VideoCreateMany): Observable<NestStorage.VideoArray> {
+  createMany(request: NestStorage.VideoCreateMany): Observable<NestStorage.VideoCreatedArray> {
     const stream$ = from(this.createManyUseCase.execute(request));
     return stream$.pipe(GrpcRxPipe.unwrapEither, GrpcRxPipe.toArrayItems);
   }
@@ -63,12 +61,6 @@ export class GrpcVideoController implements GrpcVideoServiceController {
   updateOne(request: NestStorage.VideoUpdateOne): Observable<NestStorage.Video> {
     const stream$ = from(this.updateUseCase.updateOne(request.query, request.update));
     return stream$.pipe(GrpcRxPipe.unwrapEither);
-  }
-
-  uploadOne(
-    request: Observable<NestStorage.UploadOne>,
-  ): Observable<NestStorage.VideoUploadResponse> {
-    return this.uploadOneUseCase.execute(request).pipe(GrpcRxPipe.unwrapEither);
   }
 
   deleteOne(request: NestStorage.VideoQuery): Observable<NestStorage.Video> {

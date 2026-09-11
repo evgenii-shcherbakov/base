@@ -91,9 +91,9 @@ services:
     restart: unless-stopped
     container_name: base-backend-auth
     ports:
-      - '8001:8001'
+      - '9001:9001'
     environment:
-      PORT: 8001
+      PORT: 9001
       NODE_ENV: production
       DATABASE_URL: postgresql://admin:password123@postgres:5432
       AUTH_GRPC_URL: 0.0.0.0:8001
@@ -121,9 +121,14 @@ services:
     restart: unless-stopped
     container_name: base-backend-storage
     ports:
-      - '8002:8002'
+      # The Bunny Stream webhook listener. Exposed here for local development; in deployment this
+      # is the port a public domain points at. Railway routes by service and port and has no
+      # path-based ingress, so exposure is all-or-nothing per listener: the gRPC port stays private
+      # and unexposed, while everything this one serves is public — which is why it serves exactly
+      # one signature-guarded route.
+      - '9002:9002'
     environment:
-      PORT: 8002
+      PORT: 9002
       NODE_ENV: production
       DATABASE_URL: postgresql://admin:password123@postgres:5432
       AUTH_GRPC_URL: backend.auth:8001
@@ -135,12 +140,16 @@ services:
       BUNNY_STORAGE_CDN_PRIVATE_KEY: ${BUNNY_STORAGE_CDN_PRIVATE_KEY}
       BUNNY_STORAGE_CDN_EXPIRES_IN_MINUTES: 10
       BUNNY_STREAM_API_KEY: ${BUNNY_STREAM_API_KEY}
+      BUNNY_STREAM_READ_ONLY_API_KEY: ${BUNNY_STREAM_READ_ONLY_API_KEY}
       BUNNY_STREAM_LIBRARY_ID: ${BUNNY_STREAM_LIBRARY_ID}
       BUNNY_STREAM_CDN_ZONE: ${BUNNY_STREAM_CDN_ZONE}
       BUNNY_STREAM_CDN_PRIVATE_KEY: ${BUNNY_STREAM_CDN_PRIVATE_KEY}
       BUNNY_STREAM_CDN_EXPIRES_IN_MINUTES: 60
+      BUNNY_STREAM_TUS_EXPIRES_IN_MINUTES: 120
+      STORAGE_PENDING_FILE_TTL_HOURS: 24
     networks:
       - private_network
+      - public_network
     depends_on:
       - postgres
       # - nats
@@ -156,9 +165,9 @@ services:
     restart: unless-stopped
     container_name: base-backend-api-gateway
     ports:
-      - '${BACKEND_PORT:-5555}:5555'
+      - '${BACKEND_PORT:-9000}:9000'
     environment:
-      PORT: 5555
+      PORT: 9000
       NODE_ENV: production
       API_GATEWAY_GRPC_URL: 0.0.0.0:8000
       AUTH_GRPC_URL: backend.auth:8001

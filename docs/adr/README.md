@@ -40,3 +40,4 @@ template, updates this index, and links the ADR from the owning `CLAUDE.md`.
 | [0011](0011-identity-cached-in-auth.md) | The identity read is cached in auth, not in the gateway's access guard | Accepted | `backend.auth`, `backend.api-gateway` |
 | [0012](0012-namespaced-package-config.md) | A package's config factory is registered under its own namespace | Accepted | `@backend/cache`, `@backend/event-bus-redis`, `@backend/event-bus-nats` |
 | [0013](0013-event-bus-fails-loud.md) | The event bus fails loudly where the cache fails soft | Accepted | `@backend/event-bus-redis`, `@backend/cache`, backend apps |
+| [0014](0014-video-uploads-bypass-the-backend.md) | Video bytes go browser → Bunny directly, and the callback lands on storage | Accepted | `backend.storage`, `backend.api-gateway`, `frontend.admin` |

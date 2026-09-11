@@ -7,7 +7,7 @@ import {
   VideoSaveAndPlace,
 } from '@modules/video/domain/repositories/video.repository';
 import { Injectable } from '@nestjs/common';
-import { Either, left } from '@sweet-monads/either';
+import { Either, left, right } from '@sweet-monads/either';
 
 @Injectable()
 export class VideoCreateOneUseCase {
@@ -18,7 +18,9 @@ export class VideoCreateOneUseCase {
     private readonly storageObjectValidationService: StorageObjectValidationService,
   ) {}
 
-  async execute(createData: NestStorage.VideoCreateOne): Promise<Either<Error, NestStorage.Video>> {
+  async execute(
+    createData: NestStorage.VideoCreateOne,
+  ): Promise<Either<Error, NestStorage.VideoCreated>> {
     const providerId = await this.storageVideoService.createVideo({
       ...createData.video,
       userId: createData.userId,
@@ -52,6 +54,23 @@ export class VideoCreateOneUseCase {
       saveData.storageObject = validationResult.value;
     }
 
-    return this.videoRepository.saveAndPlaceOne(saveData);
+    const video = await this.videoRepository.saveAndPlaceOne(saveData);
+
+    if (video.isLeft()) {
+      return left(video.value);
+    }
+
+    // The bytes never reach us: the caller uploads straight to Bunny with these credentials,
+    // and the provider reports the outcome back through the status webhook.
+    const upload = this.storageVideoService.getTusUpload(video.value.providerId, {
+      title: video.value.title,
+      mimeType: createData.file.mimeType,
+    });
+
+    if (upload.isLeft()) {
+      return left(upload.value);
+    }
+
+    return right({ video: video.value, upload: upload.value });
   }
 }

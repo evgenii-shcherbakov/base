@@ -135,6 +135,9 @@ export interface RedisStorageObjectParentUpdateEventHandler {
 }
 
 const RedisVideoEventPattern = {
+  UPLOADED: {
+    pattern: 'storage.video.uploaded',
+  },
   UPLOAD_FINISH: {
     pattern: 'storage.video.upload.finish',
   },
@@ -152,6 +155,11 @@ export const RedisVideoTransport = {
    */
   ControllerMethods: (): ClassDecorator => {
     const methodsDecorator = function (constructor: Function) {
+      EventPattern('storage.video.uploaded')(
+        constructor.prototype['onUploaded'],
+        'onUploaded',
+        Reflect.getOwnPropertyDescriptor(constructor.prototype, 'onUploaded'),
+      );
       EventPattern('storage.video.upload.finish')(
         constructor.prototype['onUploadFinish'],
         'onUploadFinish',
@@ -169,11 +177,22 @@ export const RedisVideoTransport = {
 } as const;
 
 export interface RedisVideoEventController {
+  onUploaded(
+    event: NestStorage.Video,
+    context?: RedisJobContext,
+  ): void | Promise<void> | Observable<void>;
   onUploadFinish(
     event: NestStorage.Video,
     context?: RedisJobContext,
   ): void | Promise<void> | Observable<void>;
   onUploadFail(
+    event: NestStorage.Video,
+    context?: RedisJobContext,
+  ): void | Promise<void> | Observable<void>;
+}
+
+export interface RedisVideoUploadedEventHandler {
+  onVideoUploaded(
     event: NestStorage.Video,
     context?: RedisJobContext,
   ): void | Promise<void> | Observable<void>;
@@ -247,6 +266,14 @@ class RedisVideoEventBusClientImpl extends RedisClientImpl implements VideoEvent
     super(client);
   }
 
+  emitUploaded(event: NestStorage.Video): Promise<any> {
+    return this.client.emit('storage.video.uploaded', event);
+  }
+
+  emitManyUploaded(events: NestStorage.Video[]): Promise<any[]> {
+    return this.client.emitMany('storage.video.uploaded', events);
+  }
+
   emitUploadFinish(event: NestStorage.Video): Promise<any> {
     return this.client.emit('storage.video.upload.finish', event);
   }
@@ -292,6 +319,7 @@ export const REDIS_HOST_EVENTS: Record<string, readonly string[]> = {
   storage: [
     'storage.image.delete',
     'storage.storage.object.parent.update',
+    'storage.video.uploaded',
     'storage.video.upload.finish',
     'storage.video.upload.fail',
   ],

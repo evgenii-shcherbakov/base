@@ -19,10 +19,6 @@ export interface VideoQuery {
   userId?: string;
 }
 
-export interface VideoArray {
-  items: Video[];
-}
-
 export interface VideoList {
   items: VideoPopulated[];
   total: number;
@@ -63,10 +59,28 @@ export interface VideoCreateManyWeb {
   items: VideoCreateManyItem[];
 }
 
-export interface VideoUploadResponse {
-  entity?: Video;
-  canSendChunks?: boolean;
-  ack?: boolean;
+/**
+ * Pre-signed credentials for a direct browser -> Bunny Stream TUS upload.
+ * `expires` and `signature` are carried as strings because Bunny rejects the upload
+ * unless the AuthorizationExpire header matches the value that was signed byte-for-byte.
+ */
+export interface VideoTusUpload {
+  endpoint: string;
+  libraryId: string;
+  videoId: string;
+  signature: string;
+  expires: string;
+  filetype: string;
+  title: string;
+}
+
+export interface VideoCreated {
+  video: Video;
+  upload: VideoTusUpload;
+}
+
+export interface VideoCreatedArray {
+  items: VideoCreated[];
 }
 
 export interface VideoUpdateSet {

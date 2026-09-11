@@ -1,6 +1,8 @@
 {
   "name": "public",
-  "namespaces": ["public"],
+  "namespaces": [
+    "public"
+  ],
   "tables": [
     {
       "name": "files",
@@ -8,13 +10,13 @@
       "columns": {
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -120,13 +122,13 @@
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -152,18 +154,23 @@
         },
         "upload_status": {
           "name": "upload_status",
-          "type": "varchar",
+          "type": "text",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": -1,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": "'PENDING'",
           "comment": null,
-          "enumItems": ["PENDING", "FAILED", "READY"],
+          "enumItems": [
+            "PENDING",
+            "FAILED",
+            "READY",
+            "UPLOADED"
+          ],
           "mappedType": "enum"
         },
         "user_id": {
@@ -185,7 +192,9 @@
       },
       "indexes": [
         {
-          "columnNames": ["created_at"],
+          "columnNames": [
+            "created_at"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "files_created_at_index",
@@ -193,7 +202,9 @@
           "unique": false
         },
         {
-          "columnNames": ["id"],
+          "columnNames": [
+            "id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "files_pkey",
@@ -201,7 +212,9 @@
           "unique": true
         },
         {
-          "columnNames": ["provider_id"],
+          "columnNames": [
+            "provider_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "files_provider_id_index",
@@ -209,7 +222,9 @@
           "unique": false
         },
         {
-          "columnNames": ["upload_status"],
+          "columnNames": [
+            "upload_status"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "files_upload_status_index",
@@ -217,7 +232,9 @@
           "unique": false
         },
         {
-          "columnNames": ["user_id"],
+          "columnNames": [
+            "user_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "files_user_id_index",
@@ -228,8 +245,8 @@
       "checks": [
         {
           "name": "files_upload_status_check",
-          "expression": "\"upload_status\" in ('PENDING', 'FAILED', 'READY')",
-          "definition": "check (\"upload_status\" in ('PENDING', 'FAILED', 'READY'))",
+          "expression": "\"upload_status\" in ('PENDING', 'FAILED', 'READY', 'UPLOADED')",
+          "definition": "check (\"upload_status\" in ('PENDING', 'FAILED', 'READY', 'UPLOADED'))",
           "columnName": "upload_status"
         }
       ],
@@ -258,13 +275,13 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -322,13 +339,13 @@
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -387,7 +404,9 @@
       },
       "indexes": [
         {
-          "columnNames": ["created_at"],
+          "columnNames": [
+            "created_at"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "images_created_at_index",
@@ -395,7 +414,9 @@
           "unique": false
         },
         {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "images_file_id_unique",
@@ -403,7 +424,9 @@
           "unique": true
         },
         {
-          "columnNames": ["id"],
+          "columnNames": [
+            "id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "images_pkey",
@@ -411,7 +434,9 @@
           "unique": true
         },
         {
-          "columnNames": ["user_id"],
+          "columnNames": [
+            "user_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "images_user_id_index",
@@ -422,10 +447,14 @@
       "checks": [],
       "foreignKeys": {
         "images_file_id_foreign": {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "constraintName": "images_file_id_foreign",
           "localTableName": "public.images",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.files",
           "deleteRule": "cascade"
         }
@@ -438,13 +467,13 @@
       "columns": {
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -518,29 +547,33 @@
         },
         "status": {
           "name": "status",
-          "type": "varchar",
+          "type": "text",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": -1,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
-          "enumItems": ["pending", "success", "failed"],
+          "enumItems": [
+            "pending",
+            "success",
+            "failed"
+          ],
           "mappedType": "enum"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -551,7 +584,9 @@
       },
       "indexes": [
         {
-          "columnNames": ["created_at"],
+          "columnNames": [
+            "created_at"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "migrations_created_at_index",
@@ -559,7 +594,9 @@
           "unique": false
         },
         {
-          "columnNames": ["name"],
+          "columnNames": [
+            "name"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "migrations_name_index",
@@ -567,7 +604,9 @@
           "unique": false
         },
         {
-          "columnNames": ["name"],
+          "columnNames": [
+            "name"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "migrations_name_unique",
@@ -575,7 +614,9 @@
           "unique": true
         },
         {
-          "columnNames": ["id"],
+          "columnNames": [
+            "id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "migrations_pkey",
@@ -583,7 +624,9 @@
           "unique": true
         },
         {
-          "columnNames": ["status"],
+          "columnNames": [
+            "status"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "migrations_status_index",
@@ -608,13 +651,13 @@
       "columns": {
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -768,29 +811,34 @@
         },
         "type": {
           "name": "type",
-          "type": "varchar",
+          "type": "text",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": -1,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
-          "enumItems": ["FOLDER", "FILE", "IMAGE", "VIDEO"],
+          "enumItems": [
+            "FOLDER",
+            "FILE",
+            "IMAGE",
+            "VIDEO"
+          ],
           "mappedType": "enum"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -805,7 +853,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": false,
+          "unique": true,
           "length": 255,
           "precision": null,
           "scale": null,
@@ -833,7 +881,9 @@
       },
       "indexes": [
         {
-          "columnNames": ["created_at"],
+          "columnNames": [
+            "created_at"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_created_at_index",
@@ -841,7 +891,9 @@
           "unique": false
         },
         {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "storage-objects_file_id_unique",
@@ -849,7 +901,9 @@
           "unique": true
         },
         {
-          "columnNames": ["image_id"],
+          "columnNames": [
+            "image_id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "storage-objects_image_id_unique",
@@ -857,7 +911,9 @@
           "unique": true
         },
         {
-          "columnNames": ["is_deleted"],
+          "columnNames": [
+            "is_deleted"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_is_deleted_index",
@@ -865,7 +921,9 @@
           "unique": false
         },
         {
-          "columnNames": ["is_folder"],
+          "columnNames": [
+            "is_folder"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_is_folder_index",
@@ -873,7 +931,9 @@
           "unique": false
         },
         {
-          "columnNames": ["is_public"],
+          "columnNames": [
+            "is_public"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_is_public_index",
@@ -881,7 +941,9 @@
           "unique": false
         },
         {
-          "columnNames": ["name"],
+          "columnNames": [
+            "name"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_name_index",
@@ -889,7 +951,9 @@
           "unique": false
         },
         {
-          "columnNames": ["id"],
+          "columnNames": [
+            "id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "storage-objects_pkey",
@@ -897,16 +961,20 @@
           "unique": true
         },
         {
-          "columnNames": [],
+          "columnNames": [
+            "user_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_root_folder_unique",
           "primary": false,
-          "unique": false,
-          "expression": "create unique index \"storage-objects_root_folder_unique\" on \"storage-objects\" (\"user_id\") where \"is_folder\" = true and \"parent_id\" is null"
+          "unique": true,
+          "expression": "CREATE UNIQUE INDEX \"storage-objects_root_folder_unique\" ON public.\"storage-objects\" USING btree (user_id) WHERE ((is_folder = true) AND (parent_id IS NULL))"
         },
         {
-          "columnNames": ["type"],
+          "columnNames": [
+            "type"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_type_index",
@@ -914,7 +982,9 @@
           "unique": false
         },
         {
-          "columnNames": ["user_id"],
+          "columnNames": [
+            "user_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "storage-objects_user_id_index",
@@ -922,7 +992,9 @@
           "unique": false
         },
         {
-          "columnNames": ["video_id"],
+          "columnNames": [
+            "video_id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "storage-objects_video_id_unique",
@@ -940,34 +1012,50 @@
       ],
       "foreignKeys": {
         "storage-objects_file_id_foreign": {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "constraintName": "storage-objects_file_id_foreign",
           "localTableName": "public.storage-objects",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.files",
           "deleteRule": "cascade"
         },
         "storage-objects_image_id_foreign": {
-          "columnNames": ["image_id"],
+          "columnNames": [
+            "image_id"
+          ],
           "constraintName": "storage-objects_image_id_foreign",
           "localTableName": "public.storage-objects",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.images",
           "deleteRule": "cascade"
         },
         "storage-objects_parent_id_foreign": {
-          "columnNames": ["parent_id"],
+          "columnNames": [
+            "parent_id"
+          ],
           "constraintName": "storage-objects_parent_id_foreign",
           "localTableName": "public.storage-objects",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.storage-objects",
           "deleteRule": "set null"
         },
         "storage-objects_video_id_foreign": {
-          "columnNames": ["video_id"],
+          "columnNames": [
+            "video_id"
+          ],
           "constraintName": "storage-objects_video_id_foreign",
           "localTableName": "public.storage-objects",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.videos",
           "deleteRule": "cascade"
         }
@@ -980,13 +1068,13 @@
       "columns": {
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -1092,13 +1180,13 @@
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz(3)",
+          "type": "timestamptz(6)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 3,
+          "length": 6,
           "precision": null,
           "scale": null,
           "default": null,
@@ -1157,7 +1245,9 @@
       },
       "indexes": [
         {
-          "columnNames": ["created_at"],
+          "columnNames": [
+            "created_at"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "videos_created_at_index",
@@ -1165,7 +1255,9 @@
           "unique": false
         },
         {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "videos_file_id_unique",
@@ -1173,7 +1265,9 @@
           "unique": true
         },
         {
-          "columnNames": ["id"],
+          "columnNames": [
+            "id"
+          ],
           "composite": false,
           "constraint": true,
           "keyName": "videos_pkey",
@@ -1181,7 +1275,9 @@
           "unique": true
         },
         {
-          "columnNames": ["provider_id"],
+          "columnNames": [
+            "provider_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "videos_provider_id_index",
@@ -1189,7 +1285,9 @@
           "unique": false
         },
         {
-          "columnNames": ["user_id"],
+          "columnNames": [
+            "user_id"
+          ],
           "composite": false,
           "constraint": false,
           "keyName": "videos_user_id_index",
@@ -1200,10 +1298,14 @@
       "checks": [],
       "foreignKeys": {
         "videos_file_id_foreign": {
-          "columnNames": ["file_id"],
+          "columnNames": [
+            "file_id"
+          ],
           "constraintName": "videos_file_id_foreign",
           "localTableName": "public.videos",
-          "referencedColumnNames": ["id"],
+          "referencedColumnNames": [
+            "id"
+          ],
           "referencedTableName": "public.files",
           "deleteRule": "cascade"
         }

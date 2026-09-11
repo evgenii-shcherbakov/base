@@ -10,11 +10,16 @@ const env = validateEnv({
   BUNNY_STORAGE_CDN_EXPIRES_IN_MINUTES: zod.coerce.number().default(10),
 
   BUNNY_STREAM_API_KEY: zod.string(),
+  BUNNY_STREAM_READ_ONLY_API_KEY: zod.string(),
   BUNNY_STREAM_LIBRARY_ID: zod.string(),
 
   BUNNY_STREAM_CDN_ZONE: zod.string(),
   BUNNY_STREAM_CDN_PRIVATE_KEY: zod.string(),
   BUNNY_STREAM_CDN_EXPIRES_IN_MINUTES: zod.coerce.number().default(60),
+
+  // Bunny requires a TUS authorization window of at least an hour, and refuses the upload once
+  // it passes — a resumed upload is re-signed, never extended.
+  BUNNY_STREAM_TUS_EXPIRES_IN_MINUTES: zod.coerce.number().min(60).default(120),
 });
 
 export const bunnyStorageConfig = () => {
@@ -36,7 +41,15 @@ export const bunnyStorageConfig = () => {
       stream: {
         apiUrl: `https://video.bunnycdn.com/library/${env.BUNNY_STREAM_LIBRARY_ID}`,
         apiKey: env.BUNNY_STREAM_API_KEY,
+        // Signs the Bunny Stream status webhook — a different key than the one that writes.
+        readOnlyApiKey: env.BUNNY_STREAM_READ_ONLY_API_KEY,
+        // The library id goes into the TUS signature and the LibraryId header, not just the URL.
+        libraryId: env.BUNNY_STREAM_LIBRARY_ID,
         playerUrl: `https://player.mediadelivery.net/embed/${env.BUNNY_STREAM_LIBRARY_ID}`,
+        tus: {
+          url: 'https://video.bunnycdn.com/tusupload',
+          expiresInMinutes: env.BUNNY_STREAM_TUS_EXPIRES_IN_MINUTES,
+        },
         cdn: {
           url: `https://${env.BUNNY_STREAM_CDN_ZONE}.b-cdn.net`,
           privateKey: env.BUNNY_STREAM_CDN_PRIVATE_KEY,

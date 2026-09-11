@@ -19,7 +19,7 @@ export interface FileQuery {
   extension?: string;
   uploadStatus?: FileUploadStatus;
   uploadStatuses: FileUploadStatus[];
-  createdAfter?: Date;
+  createdBefore?: Date;
 }
 
 export interface FileList {

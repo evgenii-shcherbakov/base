@@ -171,6 +171,12 @@ internals are in that package's `CLAUDE.md`. `backend.auth` is its one consumer:
 behind the gateway's per-request access check, and evicts on every user write — why there and not in
 the gateway's guard is [ADR-0011](docs/adr/0011-identity-cached-in-auth.md).
 
+**`backend.storage` is the one service with a public HTTP surface**, and it is a single route: the
+Bunny Stream status webhook. Video bytes no longer cross the backend at all — the browser uploads
+straight to Bunny with pre-signed TUS credentials the create call returns, and that callback is how
+an upload's outcome gets back in ([ADR-0014](docs/adr/0014-video-uploads-bypass-the-backend.md)).
+Files and images still stream through the gRPC `uploadOne` path.
+
 ## Frontend admin
 
 Next.js 15 (App Router) + Refine 5 + MUI 6, run with the `refine` CLI. It consumes `@frontend/proto`/`@packages/proto` gRPC clients to talk to api-gateway. Refine data/auth providers live in `src/common/providers`; shared UI/hooks/helpers under `src/common`.

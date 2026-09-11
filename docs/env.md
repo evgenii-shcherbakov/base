@@ -237,19 +237,22 @@ The public half must match the one `backend.api-gateway` verifies with. `ADMIN_E
 
 ### `backend.storage`
 
-<!-- env-table:start src=backend/apps/storage/src/modules/storage/infrastructure/configs/bunny.storage.config.ts -->
+<!-- env-table:start src=backend/apps/storage/src/config.ts,backend/apps/storage/src/modules/storage/infrastructure/configs/bunny.storage.config.ts -->
 
-| Variable                               | Type   | Default      |
-| -------------------------------------- | ------ | ------------ |
-| `BUNNY_STORAGE_API_KEY`                | string | **required** |
-| `BUNNY_STORAGE_CDN_ZONE`               | string | **required** |
-| `BUNNY_STORAGE_CDN_PRIVATE_KEY`        | string | **required** |
-| `BUNNY_STORAGE_CDN_EXPIRES_IN_MINUTES` | number | `10`         |
-| `BUNNY_STREAM_API_KEY`                 | string | **required** |
-| `BUNNY_STREAM_LIBRARY_ID`              | string | **required** |
-| `BUNNY_STREAM_CDN_ZONE`                | string | **required** |
-| `BUNNY_STREAM_CDN_PRIVATE_KEY`         | string | **required** |
-| `BUNNY_STREAM_CDN_EXPIRES_IN_MINUTES`  | number | `60`         |
+| Variable                               | Type        | Default      | Source                    |
+| -------------------------------------- | ----------- | ------------ | ------------------------- |
+| `STORAGE_PENDING_FILE_TTL_HOURS`       | number      | `24`         | `config.ts`               |
+| `BUNNY_STORAGE_API_KEY`                | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STORAGE_CDN_ZONE`               | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STORAGE_CDN_PRIVATE_KEY`        | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STORAGE_CDN_EXPIRES_IN_MINUTES` | number      | `10`         | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_API_KEY`                 | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_READ_ONLY_API_KEY`       | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_LIBRARY_ID`              | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_CDN_ZONE`                | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_CDN_PRIVATE_KEY`         | string      | **required** | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_CDN_EXPIRES_IN_MINUTES`  | number      | `60`         | `bunny.storage.config.ts` |
+| `BUNNY_STREAM_TUS_EXPIRES_IN_MINUTES`  | number ≥ 60 | `120`        | `bunny.storage.config.ts` |
 
 <!-- env-table:end -->
 
@@ -257,6 +260,21 @@ Two Bunny products, credentialed separately: **Storage** (files) and **Stream** 
 private keys sign time-limited URLs, expiring after the matching `*_EXPIRES_IN_MINUTES`.
 `AUTH_GRPC_URL` is set for this service even though the runtime never calls auth — the migrator's
 `create-root-folders` task talks to it over gRPC.
+
+The Stream library issues **two** keys and they are not interchangeable: `BUNNY_STREAM_API_KEY`
+writes (creating a video, signing its TUS upload), while `BUNNY_STREAM_READ_ONLY_API_KEY` is what
+Bunny signs the status webhook with — the service rejects an unsigned or mis-signed callback.
+`BUNNY_STREAM_TUS_EXPIRES_IN_MINUTES` bounds how long a browser may keep uploading against one
+signature; Bunny refuses anything under an hour, and a resumed upload is re-signed rather than
+extended. `STORAGE_PENDING_FILE_TTL_HOURS` must outlast that window plus Bunny's encoding queue —
+a video only leaves `PENDING` once the webhook arrives, so a short TTL deletes uploads in flight.
+
+Unlike the other services, `PORT` here is a real HTTP listener: it serves the single route
+`POST /webhooks/bunny/stream` and nothing else. Keep it clear of `STORAGE_GRPC_URL`'s port: in
+deployment the service's public domain targets `PORT` alone, which is what keeps gRPC private.
+Railway offers no finer granularity — a domain exposes one port of one service and cannot route by
+path — so Bunny is configured with the full `https://<storage-domain>/webhooks/bunny/stream`, and
+anything else added to this listener becomes public with it.
 
 ### `backend.api-gateway`
 

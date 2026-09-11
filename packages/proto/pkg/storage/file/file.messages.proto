@@ -18,7 +18,7 @@ message FileQuery {
   optional string extension = 7;
   optional FileUploadStatus uploadStatus = 8;
   repeated FileUploadStatus uploadStatuses = 9;
-  optional google.protobuf.Timestamp createdAfter = 10;
+  optional google.protobuf.Timestamp createdBefore = 10;
 }
 
 // types

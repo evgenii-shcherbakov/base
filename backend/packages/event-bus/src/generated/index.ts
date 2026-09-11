@@ -23,6 +23,10 @@ export abstract class StorageObjectEventBus extends EventBus {
 }
 
 export abstract class VideoEventBus extends EventBus {
+  abstract emitUploaded(event: NestStorage.Video): Promise<any>;
+
+  abstract emitManyUploaded(events: NestStorage.Video[]): Promise<any[]>;
+
   abstract emitUploadFinish(event: NestStorage.Video): Promise<any>;
 
   abstract emitManyUploadFinish(events: NestStorage.Video[]): Promise<any[]>;

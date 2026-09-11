@@ -8,7 +8,7 @@ export class PgFileMapper extends PgMapper<PgFileEntity, NestStorage.File, NestS
     mimeTypes,
     userIds,
     uploadStatuses,
-    createdAfter,
+    createdBefore,
     ...rest
   }: Partial<NestStorage.FileQuery>): ObjectQuery<PgFileEntity> {
     const result = super.transformQuery(rest);
@@ -25,8 +25,8 @@ export class PgFileMapper extends PgMapper<PgFileEntity, NestStorage.File, NestS
       result.uploadStatus = { $in: uploadStatuses };
     }
 
-    if (createdAfter) {
-      result.createdAt = { $gte: createdAfter };
+    if (createdBefore) {
+      result.createdAt = { $lte: createdBefore };
     }
 
     return result;

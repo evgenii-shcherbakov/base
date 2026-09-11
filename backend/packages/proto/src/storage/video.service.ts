@@ -11,16 +11,11 @@ import { Observable } from 'rxjs';
 import { IdField } from '../common/fields';
 import { GetList } from '../common/messages';
 import { StringMap } from '../common/types';
-import {
-  DownloadMap,
-  GetUrlMap,
-  GetUrlMapShort,
-  UploadOne,
-  UploadOneShort,
-} from './common/common.messages';
+import { DownloadMap, GetUrlMap, GetUrlMapShort } from './common/common.messages';
 import { Video } from './video/video';
 import {
-  VideoArray,
+  VideoCreated,
+  VideoCreatedArray,
   VideoCreateMany,
   VideoCreateManyWeb,
   VideoCreateOne,
@@ -29,7 +24,6 @@ import {
   VideoQuery,
   VideoUpdateById,
   VideoUpdateOne,
-  VideoUploadResponse,
 } from './video/video.messages';
 import { VideoPopulated } from './video/video.populates';
 
@@ -42,13 +36,11 @@ export interface GrpcVideoServiceClient {
 
   getList(request: GetList, metadata?: Metadata): Observable<VideoList>;
 
-  createOne(request: VideoCreateOne, metadata?: Metadata): Observable<Video>;
+  createOne(request: VideoCreateOne, metadata?: Metadata): Observable<VideoCreated>;
 
-  createMany(request: VideoCreateMany, metadata?: Metadata): Observable<VideoArray>;
+  createMany(request: VideoCreateMany, metadata?: Metadata): Observable<VideoCreatedArray>;
 
   updateOne(request: VideoUpdateOne, metadata?: Metadata): Observable<Video>;
-
-  uploadOne(request: Observable<UploadOne>, metadata?: Metadata): Observable<VideoUploadResponse>;
 
   deleteOne(request: VideoQuery, metadata?: Metadata): Observable<Video>;
 }
@@ -71,16 +63,17 @@ export interface GrpcVideoServiceController {
 
   getList(request: GetList, ...args: any[]): Promise<VideoList> | Observable<VideoList> | VideoList;
 
-  createOne(request: VideoCreateOne, ...args: any[]): Promise<Video> | Observable<Video> | Video;
+  createOne(
+    request: VideoCreateOne,
+    ...args: any[]
+  ): Promise<VideoCreated> | Observable<VideoCreated> | VideoCreated;
 
   createMany(
     request: VideoCreateMany,
     ...args: any[]
-  ): Promise<VideoArray> | Observable<VideoArray> | VideoArray;
+  ): Promise<VideoCreatedArray> | Observable<VideoCreatedArray> | VideoCreatedArray;
 
   updateOne(request: VideoUpdateOne, ...args: any[]): Promise<Video> | Observable<Video> | Video;
-
-  uploadOne(request: Observable<UploadOne>, ...args: any[]): Observable<VideoUploadResponse>;
 
   deleteOne(request: VideoQuery, ...args: any[]): Promise<Video> | Observable<Video> | Video;
 }
@@ -101,7 +94,7 @@ function VideoServiceControllerMethods() {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod('VideoService', method)(constructor.prototype[method], method, descriptor);
     }
-    const grpcStreamMethods: string[] = ['uploadOne'];
+    const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcStreamMethod('VideoService', method)(constructor.prototype[method], method, descriptor);
@@ -118,16 +111,11 @@ export interface GrpcVideoAdminServiceClient {
 
   getList(request: GetList, metadata?: Metadata): Observable<VideoList>;
 
-  createOne(request: VideoCreateOne, metadata?: Metadata): Observable<Video>;
+  createOne(request: VideoCreateOne, metadata?: Metadata): Observable<VideoCreated>;
 
-  createMany(request: VideoCreateMany, metadata?: Metadata): Observable<VideoArray>;
+  createMany(request: VideoCreateMany, metadata?: Metadata): Observable<VideoCreatedArray>;
 
   updateById(request: VideoUpdateById, metadata?: Metadata): Observable<Video>;
-
-  uploadOne(
-    request: Observable<UploadOneShort>,
-    metadata?: Metadata,
-  ): Observable<VideoUploadResponse>;
 
   deleteById(request: IdField, metadata?: Metadata): Observable<Video>;
 }
@@ -150,16 +138,17 @@ export interface GrpcVideoAdminServiceController {
 
   getList(request: GetList, ...args: any[]): Promise<VideoList> | Observable<VideoList> | VideoList;
 
-  createOne(request: VideoCreateOne, ...args: any[]): Promise<Video> | Observable<Video> | Video;
+  createOne(
+    request: VideoCreateOne,
+    ...args: any[]
+  ): Promise<VideoCreated> | Observable<VideoCreated> | VideoCreated;
 
   createMany(
     request: VideoCreateMany,
     ...args: any[]
-  ): Promise<VideoArray> | Observable<VideoArray> | VideoArray;
+  ): Promise<VideoCreatedArray> | Observable<VideoCreatedArray> | VideoCreatedArray;
 
   updateById(request: VideoUpdateById, ...args: any[]): Promise<Video> | Observable<Video> | Video;
-
-  uploadOne(request: Observable<UploadOneShort>, ...args: any[]): Observable<VideoUploadResponse>;
 
   deleteById(request: IdField, ...args: any[]): Promise<Video> | Observable<Video> | Video;
 }
@@ -180,7 +169,7 @@ function VideoAdminServiceControllerMethods() {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod('VideoAdminService', method)(constructor.prototype[method], method, descriptor);
     }
-    const grpcStreamMethods: string[] = ['uploadOne'];
+    const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcStreamMethod('VideoAdminService', method)(
@@ -197,16 +186,11 @@ export interface GrpcVideoWebServiceClient {
 
   getDownloadMap(request: GetUrlMapShort, metadata?: Metadata): Observable<DownloadMap>;
 
-  createOne(request: VideoCreateOneWeb, metadata?: Metadata): Observable<Video>;
+  createOne(request: VideoCreateOneWeb, metadata?: Metadata): Observable<VideoCreated>;
 
-  createMany(request: VideoCreateManyWeb, metadata?: Metadata): Observable<VideoArray>;
+  createMany(request: VideoCreateManyWeb, metadata?: Metadata): Observable<VideoCreatedArray>;
 
   updateById(request: VideoUpdateById, metadata?: Metadata): Observable<Video>;
-
-  uploadOne(
-    request: Observable<UploadOneShort>,
-    metadata?: Metadata,
-  ): Observable<VideoUploadResponse>;
 
   deleteById(request: IdField, metadata?: Metadata): Observable<Video>;
 }
@@ -222,16 +206,17 @@ export interface GrpcVideoWebServiceController {
     ...args: any[]
   ): Promise<DownloadMap> | Observable<DownloadMap> | DownloadMap;
 
-  createOne(request: VideoCreateOneWeb, ...args: any[]): Promise<Video> | Observable<Video> | Video;
+  createOne(
+    request: VideoCreateOneWeb,
+    ...args: any[]
+  ): Promise<VideoCreated> | Observable<VideoCreated> | VideoCreated;
 
   createMany(
     request: VideoCreateManyWeb,
     ...args: any[]
-  ): Promise<VideoArray> | Observable<VideoArray> | VideoArray;
+  ): Promise<VideoCreatedArray> | Observable<VideoCreatedArray> | VideoCreatedArray;
 
   updateById(request: VideoUpdateById, ...args: any[]): Promise<Video> | Observable<Video> | Video;
-
-  uploadOne(request: Observable<UploadOneShort>, ...args: any[]): Observable<VideoUploadResponse>;
 
   deleteById(request: IdField, ...args: any[]): Promise<Video> | Observable<Video> | Video;
 }
@@ -250,7 +235,7 @@ function VideoWebServiceControllerMethods() {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod('VideoWebService', method)(constructor.prototype[method], method, descriptor);
     }
-    const grpcStreamMethods: string[] = ['uploadOne'];
+    const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcStreamMethod('VideoWebService', method)(

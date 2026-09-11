@@ -25,7 +25,11 @@ export interface EventBusStrategy {
     storageObject: {
       parentUpdate: StorageObjectParentUpdateEvent;
     };
+    // Three stages, in order: `uploaded` = the bytes reached Bunny, `uploadFinish` = Bunny finished
+    // encoding and the video is playable, `uploadFail` = it will never play. The file module
+    // consumes all three and maps them to UPLOADED / READY / FAILED.
     video: {
+      uploaded: NestStorage.Video;
       uploadFinish: NestStorage.Video;
       uploadFail: NestStorage.Video;
     };

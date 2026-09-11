@@ -3,6 +3,7 @@ import {
   RedisController,
   RedisEvent,
   RedisVideoTransport,
+  RedisVideoUploadedEventHandler,
   RedisVideoUploadFailEventHandler,
   RedisVideoUploadFinishEventHandler,
 } from '@backend/event-bus-redis';
@@ -10,9 +11,26 @@ import { FileUpdateUseCase } from '@modules/file/application/use-cases/file.upda
 
 @RedisController({ consumer: 'storage.file' })
 export class RedisFileController
-  implements RedisVideoUploadFinishEventHandler, RedisVideoUploadFailEventHandler
+  implements
+    RedisVideoUploadedEventHandler,
+    RedisVideoUploadFinishEventHandler,
+    RedisVideoUploadFailEventHandler
 {
   constructor(private readonly updateUseCase: FileUpdateUseCase) {}
+
+  @RedisEvent(RedisVideoTransport.UPLOADED)
+  async onVideoUploaded(event: NestStorage.Video): Promise<void> {
+    // PENDING is the only status UPLOADED may follow, and the query — not a read-then-write — is
+    // what enforces it. The three video events land in three independent queues with independent
+    // retry ladders and no ordering between them, so a redelivered `uploaded` can arrive after
+    // `upload.finish`; an unconditional set would demote a READY row and hide the player on an
+    // already-encoded video. A miss is the normal outcome, so the left is left unthrown: raising it
+    // would burn ten BullMQ attempts and park the job in the DLQ over correct behaviour.
+    await this.updateUseCase.updateOne(
+      { id: event.fileId, uploadStatus: NestStorage.FileUploadStatus.PENDING },
+      { set: { uploadStatus: NestStorage.FileUploadStatus.UPLOADED } },
+    );
+  }
 
   @RedisEvent(RedisVideoTransport.UPLOAD_FAIL)
   async onVideoUploadFail(event: NestStorage.Video): Promise<void> {

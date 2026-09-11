@@ -12,7 +12,7 @@ import {
   StorageUploaderProps,
 } from '@/features/storage/components';
 import { useMultipleFileUpload } from '@/features/storage/hooks';
-import { StorageUploadItem } from '@/features/storage/types';
+import { StorageUploadItem, UploadFileAction } from '@/features/storage/types';
 import { Box, Stack, Typography } from '@mui/material';
 import { SchemaTypeOf } from '@packages/common';
 import { BrowserAuth, type BrowserCommon } from '@packages/proto';
@@ -40,6 +40,10 @@ type Props<Entity extends BrowserCommon.IdField & { uploadId: string }> = {
   // (`*ActionProvider.createMany`); both this component and its consumers are `'use client'`,
   // so passing it is safe.
   createManyAction: (uploadItemsBatch: StorageUploadItem[], form: Params) => Promise<Entity[]>;
+  // Same `Action`-suffix reason as `createManyAction`: it is a client function, not a server one.
+  // Passed through to the hook so video can upload straight to the provider instead of POSTing
+  // multipart to a route handler.
+  uploadFileAction?: UploadFileAction;
   fileRefField?: keyof Entity | string;
 };
 
@@ -56,7 +60,10 @@ export const UploadManyPage = <Entity extends BrowserCommon.IdField & { uploadId
     handleUpload,
     handleDelete,
     addFiles,
-  } = useMultipleFileUpload({ resource: props.fileResource });
+  } = useMultipleFileUpload({
+    resource: props.fileResource,
+    uploadFileAction: props.uploadFileAction,
+  });
 
   const batchSizeOptions = useMemo(() => {
     const options = [1, 5, 10, 20, 100];

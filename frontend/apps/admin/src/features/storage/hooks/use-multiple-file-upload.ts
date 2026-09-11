@@ -2,7 +2,7 @@
 
 import { internalHttpClient } from '@/common/clients';
 import { getErrorMessage } from '@/common/helpers';
-import { StorageUploadItem } from '@/features/storage/types';
+import { StorageUploadItem, UploadFileAction } from '@/features/storage/types';
 import { useNotification } from '@refinedev/core';
 import { useCallback, useState } from 'react';
 import { monotonicFactory } from 'ulid';
@@ -10,6 +10,9 @@ import type { BrowserCommon } from '@packages/proto';
 
 type Params = {
   resource: string;
+  // Same override as in `useSingleFileUpload`: video replaces the multipart POST with a direct
+  // TUS upload to the provider.
+  uploadFileAction?: UploadFileAction;
 };
 
 type Entity = BrowserCommon.IdField & { uploadId: string };
@@ -18,7 +21,7 @@ type StorageUploadMap = {
   [id: string]: StorageUploadItem;
 };
 
-export const useMultipleFileUpload = ({ resource }: Params) => {
+export const useMultipleFileUpload = ({ resource, uploadFileAction }: Params) => {
   const [uploadMap, setUploadMap] = useState<StorageUploadMap>({});
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
@@ -114,6 +117,7 @@ export const useMultipleFileUpload = ({ resource }: Params) => {
         );
 
         const entityIdByUploadId = new Map<string, string>();
+        const entityByUploadId = new Map<string, Entity>();
 
         if (parsedData.createItems.length) {
           const entities = await createCallback(parsedData.batch);
@@ -124,6 +128,7 @@ export const useMultipleFileUpload = ({ resource }: Params) => {
                 acc[entity.uploadId] = {
                   ...prev[entity.uploadId],
                   entityId: entity[field]?.toString(),
+                  entity,
                 };
 
                 return acc;
@@ -139,21 +144,33 @@ export const useMultipleFileUpload = ({ resource }: Params) => {
 
           entities.forEach((entity) => {
             entityIdByUploadId.set(entity.uploadId, entity[field]!.toString());
+            entityByUploadId.set(entity.uploadId, entity);
           });
         }
 
         for (const uploadItem of parsedData.batch) {
           const file = uploadItem.file;
           const entityId = uploadItem.entityId ?? entityIdByUploadId.get(uploadItem.uploadId);
+          const entity = uploadItem.entity ?? entityByUploadId.get(uploadItem.uploadId);
 
           if (!entityId) {
             throw new Error(`File ${file.name} not found`);
           }
 
-          const formData = new FormData();
-          formData.append('file', file);
-
           try {
+            if (uploadFileAction) {
+              if (!entity) {
+                throw new Error(`Upload credentials for ${file.name} are missing`);
+              }
+
+              await uploadFileAction(file, entity);
+              handleFinish(uploadItem.uploadId);
+              continue;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
             await internalHttpClient.post(`${resource}/${entityId}/upload`, formData, {
               timeout: 0,
               maxBodyLength: Infinity,

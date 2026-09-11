@@ -14,16 +14,21 @@ export const getFileSize = (sizeInBytes = 0): string => {
   return `${(sizeInBytes / ONE_KB_BYTES).toFixed(2)} KB`;
 };
 
-const colorByUploadStatus = new Map<BrowserStorage.FileUploadStatus, TextFieldProps['color']>([
-  [BrowserStorage.FileUploadStatus.READY, 'success'],
-  [BrowserStorage.FileUploadStatus.FAILED, 'error'],
-  [BrowserStorage.FileUploadStatus.PENDING, 'warning'],
-]);
+// A Record, not a Map: a Map lookup misses silently, so the member added before this one rendered
+// colourless with nothing to catch it. This shape makes the compiler demand every status.
+const colorByUploadStatus: Record<BrowserStorage.FileUploadStatus, TextFieldProps['color']> = {
+  [BrowserStorage.FileUploadStatus.READY]: 'success',
+  // In progress and nothing wrong — `warning` already means "not done and possibly stuck", which
+  // is what UPLOADED is not.
+  [BrowserStorage.FileUploadStatus.UPLOADED]: 'info',
+  [BrowserStorage.FileUploadStatus.FAILED]: 'error',
+  [BrowserStorage.FileUploadStatus.PENDING]: 'warning',
+};
 
 export const getFileUploadStatusColor = (status?: BrowserStorage.FileUploadStatus) => {
   if (!status) {
     return;
   }
 
-  return colorByUploadStatus.get(status);
+  return colorByUploadStatus[status];
 };

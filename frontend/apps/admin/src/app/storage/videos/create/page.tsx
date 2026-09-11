@@ -11,11 +11,11 @@ import {
   StorageUploader,
 } from '@/features/storage/components';
 import { useSingleFileUpload } from '@/features/storage/hooks';
-import { videoActionProvider } from '@/features/storage/providers';
-import { getGenericVideTitle } from '@/features/video/helpers';
+import { videoActionProvider, type CreatedVideo } from '@/features/storage/providers';
+import { getGenericVideTitle, uploadViaTus } from '@/features/video/helpers';
 import { Box, Card, CardContent, CardHeader, Stack } from '@mui/material';
 import { SchemaTypeOf, StorageDatabaseEntity } from '@packages/common';
-import type { BrowserAuth, BrowserStorage } from '@packages/proto';
+import type { BrowserAuth } from '@packages/proto';
 import { useGetIdentity } from '@refinedev/core';
 import zod from 'zod';
 
@@ -36,6 +36,9 @@ export default function VideoCreate() {
 
   const { isUploading, progress, handleUpload } = useSingleFileUpload({
     resource: StorageDatabaseEntity.VIDEO,
+    // Straight from the browser to Bunny — nothing passes through the Next server.
+    uploadFileAction: (file, entity, options) =>
+      uploadViaTus(file, (entity as CreatedVideo).upload, { onProgress: options?.onProgress }),
   });
 
   const {
@@ -65,7 +68,7 @@ export default function VideoCreate() {
   };
 
   const handleSave = async (data: Params) => {
-    const createdVideo = await handleUpload<BrowserStorage.Video>(data.file, async () => {
+    const createdVideo = await handleUpload<CreatedVideo>(data.file, async () => {
       return videoActionProvider.createOne(
         data.userId,
         {
@@ -82,7 +85,9 @@ export default function VideoCreate() {
     });
 
     if (createdVideo) {
-      await onFinish(createdVideo as any);
+      // The TUS credentials are spent by now — they have no business in Refine's record.
+      const { upload, ...video } = createdVideo;
+      await onFinish(video as any);
     }
   };
 

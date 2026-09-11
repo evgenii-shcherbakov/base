@@ -6,10 +6,17 @@
 
 /* eslint-disable */
 
+/**
+ * UPLOADED sits between PENDING and READY: the bytes reached the provider but it has not finished
+ * processing them yet. Only videos use it — Bunny's encode takes up to ~33 minutes, and without it
+ * "still encoding" and "upload died" are the same state. Appended rather than inserted at 2: the
+ * declaration order drives the generated member order and the value list in the CHECK constraint.
+ */
 export enum FileUploadStatus {
   PENDING = 'PENDING',
   FAILED = 'FAILED',
   READY = 'READY',
+  UPLOADED = 'UPLOADED',
 }
 
 export interface File {

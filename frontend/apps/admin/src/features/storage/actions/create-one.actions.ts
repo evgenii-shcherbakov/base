@@ -25,7 +25,7 @@ export async function createFile(
 
 export async function createVideo(
   request: ClientStorage.VideoCreateOne,
-): Promise<CreateActionResponse<ClientStorage.Video>> {
+): Promise<CreateActionResponse<ClientStorage.VideoCreated>> {
   try {
     const metadata = await authService.getAuthMetadata();
     const entity = await videoGrpcRepository.createOne(request, metadata);

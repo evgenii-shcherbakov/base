@@ -8,12 +8,22 @@ type VideoItem = Pick<StorageUploadItem, 'file'> & {
   description?: string;
 };
 
+/**
+ * The wire keeps the entity and its pre-signed TUS credentials apart so the credentials never
+ * leak into the read model. The upload hooks read `id`/`uploadId` off a flat record, so the pair
+ * is flattened here — at the boundary — and nowhere else.
+ */
+export type CreatedVideo = BrowserStorage.Video & {
+  upload: BrowserStorage.VideoTusUpload;
+};
+
+const flatten = ({ video, upload }: BrowserStorage.VideoCreated): CreatedVideo => ({
+  ...video!,
+  upload: upload!,
+});
+
 export class VideoActionProvider {
-  async createOne(
-    userId: string,
-    item: VideoItem,
-    storage?: StorageData,
-  ): Promise<BrowserStorage.Video> {
+  async createOne(userId: string, item: VideoItem, storage?: StorageData): Promise<CreatedVideo> {
     const data: BrowserStorage.VideoCreateOne = {
       file: {
         originalName: item.file.name,
@@ -41,14 +51,14 @@ export class VideoActionProvider {
       throw new Error(response.error);
     }
 
-    return response.entity;
+    return flatten(response.entity);
   }
 
   async createMany(
     userId: string,
     items: StorageUploadItem[],
     storage?: Omit<StorageData, 'name'>,
-  ): Promise<BrowserStorage.Video[]> {
+  ): Promise<CreatedVideo[]> {
     const data: BrowserStorage.VideoCreateMany = {
       items: items.map((item) => {
         return {
@@ -79,6 +89,6 @@ export class VideoActionProvider {
       throw new Error(response.error);
     }
 
-    return response.data;
+    return response.data.map(flatten);
   }
 }

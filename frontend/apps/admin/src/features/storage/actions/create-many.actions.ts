@@ -37,7 +37,7 @@ export async function createManyImages(
 
 export async function createManyVideos(
   request: ClientStorage.VideoCreateMany,
-): Promise<CreateActionResponse<ClientStorage.Video[]>> {
+): Promise<CreateActionResponse<ClientStorage.VideoCreated[]>> {
   try {
     const metadata = await authService.getAuthMetadata();
     const response = await videoGrpcRepository.createMany(request, metadata);

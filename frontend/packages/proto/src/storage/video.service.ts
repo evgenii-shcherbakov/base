@@ -10,7 +10,6 @@ import {
   CallOptions,
   ChannelCredentials,
   Client,
-  ClientDuplexStream,
   ClientOptions,
   ClientUnaryCall,
   makeGenericClientConstructor,
@@ -20,16 +19,11 @@ import {
 import { IdField } from '../common/fields';
 import { GetList } from '../common/messages';
 import { StringMap } from '../common/types';
-import {
-  DownloadMap,
-  GetUrlMap,
-  GetUrlMapShort,
-  UploadOne,
-  UploadOneShort,
-} from './common/common.messages';
+import { DownloadMap, GetUrlMap, GetUrlMapShort } from './common/common.messages';
 import { Video } from './video/video';
 import {
-  VideoArray,
+  VideoCreated,
+  VideoCreatedArray,
   VideoCreateMany,
   VideoCreateManyWeb,
   VideoCreateOne,
@@ -38,7 +32,6 @@ import {
   VideoQuery,
   VideoUpdateById,
   VideoUpdateOne,
-  VideoUploadResponse,
 } from './video/video.messages';
 import { VideoPopulated } from './video/video.populates';
 
@@ -89,8 +82,9 @@ const VideoServiceService = {
     requestSerialize: (value: VideoCreateOne): Buffer =>
       Buffer.from(VideoCreateOne.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateOne => VideoCreateOne.decode(value),
-    responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
-    responseDeserialize: (value: Buffer): Video => Video.decode(value),
+    responseSerialize: (value: VideoCreated): Buffer =>
+      Buffer.from(VideoCreated.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreated => VideoCreated.decode(value),
   },
   createMany: {
     path: '/storage.VideoService/createMany' as const,
@@ -99,9 +93,9 @@ const VideoServiceService = {
     requestSerialize: (value: VideoCreateMany): Buffer =>
       Buffer.from(VideoCreateMany.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateMany => VideoCreateMany.decode(value),
-    responseSerialize: (value: VideoArray): Buffer =>
-      Buffer.from(VideoArray.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoArray => VideoArray.decode(value),
+    responseSerialize: (value: VideoCreatedArray): Buffer =>
+      Buffer.from(VideoCreatedArray.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreatedArray => VideoCreatedArray.decode(value),
   },
   updateOne: {
     path: '/storage.VideoService/updateOne' as const,
@@ -112,16 +106,6 @@ const VideoServiceService = {
     requestDeserialize: (value: Buffer): VideoUpdateOne => VideoUpdateOne.decode(value),
     responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
     responseDeserialize: (value: Buffer): Video => Video.decode(value),
-  },
-  uploadOne: {
-    path: '/storage.VideoService/uploadOne' as const,
-    requestStream: true as const,
-    responseStream: true as const,
-    requestSerialize: (value: UploadOne): Buffer => Buffer.from(UploadOne.encode(value).finish()),
-    requestDeserialize: (value: Buffer): UploadOne => UploadOne.decode(value),
-    responseSerialize: (value: VideoUploadResponse): Buffer =>
-      Buffer.from(VideoUploadResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoUploadResponse => VideoUploadResponse.decode(value),
   },
   deleteOne: {
     path: '/storage.VideoService/deleteOne' as const,
@@ -197,33 +181,33 @@ export interface GrpcVideoServiceClient extends Client {
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   updateOne(
     request: VideoUpdateOne,
@@ -240,12 +224,6 @@ export interface GrpcVideoServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Video) => void,
   ): ClientUnaryCall;
-  uploadOne(): ClientDuplexStream<UploadOne, VideoUploadResponse>;
-  uploadOne(options: Partial<CallOptions>): ClientDuplexStream<UploadOne, VideoUploadResponse>;
-  uploadOne(
-    metadata: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientDuplexStream<UploadOne, VideoUploadResponse>;
   deleteOne(
     request: VideoQuery,
     callback: (error: ServiceError | null, response: Video) => void,
@@ -315,8 +293,8 @@ export const GrpcVideoServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateOne) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateOne;
-      readonly responseSerialize: (value: Video) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => Video;
+      readonly responseSerialize: (value: VideoCreated) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreated;
     };
     readonly createMany: {
       readonly path: '/storage.VideoService/createMany';
@@ -324,8 +302,8 @@ export const GrpcVideoServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateMany) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateMany;
-      readonly responseSerialize: (value: VideoArray) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoArray;
+      readonly responseSerialize: (value: VideoCreatedArray) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreatedArray;
     };
     readonly updateOne: {
       readonly path: '/storage.VideoService/updateOne';
@@ -335,15 +313,6 @@ export const GrpcVideoServiceClient = makeGenericClientConstructor(
       readonly requestDeserialize: (value: Buffer) => VideoUpdateOne;
       readonly responseSerialize: (value: Video) => Buffer;
       readonly responseDeserialize: (value: Buffer) => Video;
-    };
-    readonly uploadOne: {
-      readonly path: '/storage.VideoService/uploadOne';
-      readonly requestStream: true;
-      readonly responseStream: true;
-      readonly requestSerialize: (value: UploadOne) => Buffer;
-      readonly requestDeserialize: (value: Buffer) => UploadOne;
-      readonly responseSerialize: (value: VideoUploadResponse) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoUploadResponse;
     };
     readonly deleteOne: {
       readonly path: '/storage.VideoService/deleteOne';
@@ -407,8 +376,9 @@ const VideoAdminServiceService = {
     requestSerialize: (value: VideoCreateOne): Buffer =>
       Buffer.from(VideoCreateOne.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateOne => VideoCreateOne.decode(value),
-    responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
-    responseDeserialize: (value: Buffer): Video => Video.decode(value),
+    responseSerialize: (value: VideoCreated): Buffer =>
+      Buffer.from(VideoCreated.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreated => VideoCreated.decode(value),
   },
   createMany: {
     path: '/storage.VideoAdminService/createMany' as const,
@@ -417,9 +387,9 @@ const VideoAdminServiceService = {
     requestSerialize: (value: VideoCreateMany): Buffer =>
       Buffer.from(VideoCreateMany.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateMany => VideoCreateMany.decode(value),
-    responseSerialize: (value: VideoArray): Buffer =>
-      Buffer.from(VideoArray.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoArray => VideoArray.decode(value),
+    responseSerialize: (value: VideoCreatedArray): Buffer =>
+      Buffer.from(VideoCreatedArray.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreatedArray => VideoCreatedArray.decode(value),
   },
   updateById: {
     path: '/storage.VideoAdminService/updateById' as const,
@@ -430,17 +400,6 @@ const VideoAdminServiceService = {
     requestDeserialize: (value: Buffer): VideoUpdateById => VideoUpdateById.decode(value),
     responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
     responseDeserialize: (value: Buffer): Video => Video.decode(value),
-  },
-  uploadOne: {
-    path: '/storage.VideoAdminService/uploadOne' as const,
-    requestStream: true as const,
-    responseStream: true as const,
-    requestSerialize: (value: UploadOneShort): Buffer =>
-      Buffer.from(UploadOneShort.encode(value).finish()),
-    requestDeserialize: (value: Buffer): UploadOneShort => UploadOneShort.decode(value),
-    responseSerialize: (value: VideoUploadResponse): Buffer =>
-      Buffer.from(VideoUploadResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoUploadResponse => VideoUploadResponse.decode(value),
   },
   deleteById: {
     path: '/storage.VideoAdminService/deleteById' as const,
@@ -516,33 +475,33 @@ export interface GrpcVideoAdminServiceClient extends Client {
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOne,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateMany,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   updateById(
     request: VideoUpdateById,
@@ -559,12 +518,6 @@ export interface GrpcVideoAdminServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Video) => void,
   ): ClientUnaryCall;
-  uploadOne(): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
-  uploadOne(options: Partial<CallOptions>): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
-  uploadOne(
-    metadata: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
   deleteById(
     request: IdField,
     callback: (error: ServiceError | null, response: Video) => void,
@@ -634,8 +587,8 @@ export const GrpcVideoAdminServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateOne) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateOne;
-      readonly responseSerialize: (value: Video) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => Video;
+      readonly responseSerialize: (value: VideoCreated) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreated;
     };
     readonly createMany: {
       readonly path: '/storage.VideoAdminService/createMany';
@@ -643,8 +596,8 @@ export const GrpcVideoAdminServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateMany) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateMany;
-      readonly responseSerialize: (value: VideoArray) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoArray;
+      readonly responseSerialize: (value: VideoCreatedArray) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreatedArray;
     };
     readonly updateById: {
       readonly path: '/storage.VideoAdminService/updateById';
@@ -654,15 +607,6 @@ export const GrpcVideoAdminServiceClient = makeGenericClientConstructor(
       readonly requestDeserialize: (value: Buffer) => VideoUpdateById;
       readonly responseSerialize: (value: Video) => Buffer;
       readonly responseDeserialize: (value: Buffer) => Video;
-    };
-    readonly uploadOne: {
-      readonly path: '/storage.VideoAdminService/uploadOne';
-      readonly requestStream: true;
-      readonly responseStream: true;
-      readonly requestSerialize: (value: UploadOneShort) => Buffer;
-      readonly requestDeserialize: (value: Buffer) => UploadOneShort;
-      readonly responseSerialize: (value: VideoUploadResponse) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoUploadResponse;
     };
     readonly deleteById: {
       readonly path: '/storage.VideoAdminService/deleteById';
@@ -707,8 +651,9 @@ const VideoWebServiceService = {
     requestSerialize: (value: VideoCreateOneWeb): Buffer =>
       Buffer.from(VideoCreateOneWeb.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateOneWeb => VideoCreateOneWeb.decode(value),
-    responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
-    responseDeserialize: (value: Buffer): Video => Video.decode(value),
+    responseSerialize: (value: VideoCreated): Buffer =>
+      Buffer.from(VideoCreated.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreated => VideoCreated.decode(value),
   },
   createMany: {
     path: '/storage.VideoWebService/createMany' as const,
@@ -717,9 +662,9 @@ const VideoWebServiceService = {
     requestSerialize: (value: VideoCreateManyWeb): Buffer =>
       Buffer.from(VideoCreateManyWeb.encode(value).finish()),
     requestDeserialize: (value: Buffer): VideoCreateManyWeb => VideoCreateManyWeb.decode(value),
-    responseSerialize: (value: VideoArray): Buffer =>
-      Buffer.from(VideoArray.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoArray => VideoArray.decode(value),
+    responseSerialize: (value: VideoCreatedArray): Buffer =>
+      Buffer.from(VideoCreatedArray.encode(value).finish()),
+    responseDeserialize: (value: Buffer): VideoCreatedArray => VideoCreatedArray.decode(value),
   },
   updateById: {
     path: '/storage.VideoWebService/updateById' as const,
@@ -730,17 +675,6 @@ const VideoWebServiceService = {
     requestDeserialize: (value: Buffer): VideoUpdateById => VideoUpdateById.decode(value),
     responseSerialize: (value: Video): Buffer => Buffer.from(Video.encode(value).finish()),
     responseDeserialize: (value: Buffer): Video => Video.decode(value),
-  },
-  uploadOne: {
-    path: '/storage.VideoWebService/uploadOne' as const,
-    requestStream: true as const,
-    responseStream: true as const,
-    requestSerialize: (value: UploadOneShort): Buffer =>
-      Buffer.from(UploadOneShort.encode(value).finish()),
-    requestDeserialize: (value: Buffer): UploadOneShort => UploadOneShort.decode(value),
-    responseSerialize: (value: VideoUploadResponse): Buffer =>
-      Buffer.from(VideoUploadResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): VideoUploadResponse => VideoUploadResponse.decode(value),
   },
   deleteById: {
     path: '/storage.VideoWebService/deleteById' as const,
@@ -786,33 +720,33 @@ export interface GrpcVideoWebServiceClient extends Client {
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOneWeb,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOneWeb,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createOne(
     request: VideoCreateOneWeb,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: Video) => void,
+    callback: (error: ServiceError | null, response: VideoCreated) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateManyWeb,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateManyWeb,
     metadata: Metadata,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   createMany(
     request: VideoCreateManyWeb,
     metadata: Metadata,
     options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: VideoArray) => void,
+    callback: (error: ServiceError | null, response: VideoCreatedArray) => void,
   ): ClientUnaryCall;
   updateById(
     request: VideoUpdateById,
@@ -829,12 +763,6 @@ export interface GrpcVideoWebServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Video) => void,
   ): ClientUnaryCall;
-  uploadOne(): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
-  uploadOne(options: Partial<CallOptions>): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
-  uploadOne(
-    metadata: Metadata,
-    options?: Partial<CallOptions>,
-  ): ClientDuplexStream<UploadOneShort, VideoUploadResponse>;
   deleteById(
     request: IdField,
     callback: (error: ServiceError | null, response: Video) => void,
@@ -886,8 +814,8 @@ export const GrpcVideoWebServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateOneWeb) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateOneWeb;
-      readonly responseSerialize: (value: Video) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => Video;
+      readonly responseSerialize: (value: VideoCreated) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreated;
     };
     readonly createMany: {
       readonly path: '/storage.VideoWebService/createMany';
@@ -895,8 +823,8 @@ export const GrpcVideoWebServiceClient = makeGenericClientConstructor(
       readonly responseStream: false;
       readonly requestSerialize: (value: VideoCreateManyWeb) => Buffer;
       readonly requestDeserialize: (value: Buffer) => VideoCreateManyWeb;
-      readonly responseSerialize: (value: VideoArray) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoArray;
+      readonly responseSerialize: (value: VideoCreatedArray) => Buffer;
+      readonly responseDeserialize: (value: Buffer) => VideoCreatedArray;
     };
     readonly updateById: {
       readonly path: '/storage.VideoWebService/updateById';
@@ -906,15 +834,6 @@ export const GrpcVideoWebServiceClient = makeGenericClientConstructor(
       readonly requestDeserialize: (value: Buffer) => VideoUpdateById;
       readonly responseSerialize: (value: Video) => Buffer;
       readonly responseDeserialize: (value: Buffer) => Video;
-    };
-    readonly uploadOne: {
-      readonly path: '/storage.VideoWebService/uploadOne';
-      readonly requestStream: true;
-      readonly responseStream: true;
-      readonly requestSerialize: (value: UploadOneShort) => Buffer;
-      readonly requestDeserialize: (value: Buffer) => UploadOneShort;
-      readonly responseSerialize: (value: VideoUploadResponse) => Buffer;
-      readonly responseDeserialize: (value: Buffer) => VideoUploadResponse;
     };
     readonly deleteById: {
       readonly path: '/storage.VideoWebService/deleteById';
@@ -1012,8 +931,8 @@ export class GrpcVideoRepository {
     request: VideoCreateOne,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<Video> {
-    return new Promise<Video>((resolve, reject) => {
+  ): Promise<VideoCreated> {
+    return new Promise<VideoCreated>((resolve, reject) => {
       this.client.createOne(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);
@@ -1028,8 +947,8 @@ export class GrpcVideoRepository {
     request: VideoCreateMany,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<VideoArray> {
-    return new Promise<VideoArray>((resolve, reject) => {
+  ): Promise<VideoCreatedArray> {
+    return new Promise<VideoCreatedArray>((resolve, reject) => {
       this.client.createMany(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);
@@ -1156,8 +1075,8 @@ export class GrpcVideoAdminRepository {
     request: VideoCreateOne,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<Video> {
-    return new Promise<Video>((resolve, reject) => {
+  ): Promise<VideoCreated> {
+    return new Promise<VideoCreated>((resolve, reject) => {
       this.client.createOne(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);
@@ -1172,8 +1091,8 @@ export class GrpcVideoAdminRepository {
     request: VideoCreateMany,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<VideoArray> {
-    return new Promise<VideoArray>((resolve, reject) => {
+  ): Promise<VideoCreatedArray> {
+    return new Promise<VideoCreatedArray>((resolve, reject) => {
       this.client.createMany(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);
@@ -1268,8 +1187,8 @@ export class GrpcVideoWebRepository {
     request: VideoCreateOneWeb,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<Video> {
-    return new Promise<Video>((resolve, reject) => {
+  ): Promise<VideoCreated> {
+    return new Promise<VideoCreated>((resolve, reject) => {
       this.client.createOne(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);
@@ -1284,8 +1203,8 @@ export class GrpcVideoWebRepository {
     request: VideoCreateManyWeb,
     metadata: Metadata = new Metadata(),
     options: Partial<CallOptions> = {},
-  ): Promise<VideoArray> {
-    return new Promise<VideoArray>((resolve, reject) => {
+  ): Promise<VideoCreatedArray> {
+    return new Promise<VideoCreatedArray>((resolve, reject) => {
       this.client.createMany(request, metadata, options, (err, response) => {
         if (err) {
           reject(err);

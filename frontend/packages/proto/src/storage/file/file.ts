@@ -9,10 +9,17 @@
 import { BinaryReader, BinaryWriter } from '@bufbuild/protobuf/wire';
 import { Timestamp } from '../../google/protobuf/timestamp';
 
+/**
+ * UPLOADED sits between PENDING and READY: the bytes reached the provider but it has not finished
+ * processing them yet. Only videos use it — Bunny's encode takes up to ~33 minutes, and without it
+ * "still encoding" and "upload died" are the same state. Appended rather than inserted at 2: the
+ * declaration order drives the generated member order and the value list in the CHECK constraint.
+ */
 export enum FileUploadStatus {
   PENDING = 'PENDING',
   FAILED = 'FAILED',
   READY = 'READY',
+  UPLOADED = 'UPLOADED',
 }
 
 export function fileUploadStatusFromJSON(object: any): FileUploadStatus {
@@ -26,6 +33,9 @@ export function fileUploadStatusFromJSON(object: any): FileUploadStatus {
     case 2:
     case 'READY':
       return FileUploadStatus.READY;
+    case 3:
+    case 'UPLOADED':
+      return FileUploadStatus.UPLOADED;
     default:
       throw new globalThis.Error(
         'Unrecognized enum value ' + object + ' for enum FileUploadStatus',
@@ -41,6 +51,8 @@ export function fileUploadStatusToJSON(object: FileUploadStatus): string {
       return 'FAILED';
     case FileUploadStatus.READY:
       return 'READY';
+    case FileUploadStatus.UPLOADED:
+      return 'UPLOADED';
     default:
       throw new globalThis.Error(
         'Unrecognized enum value ' + object + ' for enum FileUploadStatus',
@@ -56,6 +68,8 @@ export function fileUploadStatusToNumber(object: FileUploadStatus): number {
       return 1;
     case FileUploadStatus.READY:
       return 2;
+    case FileUploadStatus.UPLOADED:
+      return 3;
     default:
       throw new globalThis.Error(
         'Unrecognized enum value ' + object + ' for enum FileUploadStatus',

@@ -27,7 +27,7 @@ export interface FileQuery {
   extension?: string;
   uploadStatus?: FileUploadStatus;
   uploadStatuses: FileUploadStatus[];
-  createdAfter?: Date;
+  createdBefore?: Date;
 }
 
 export interface FileList {
@@ -89,7 +89,7 @@ function createBaseFileQuery(): FileQuery {
     extension: undefined,
     uploadStatus: undefined,
     uploadStatuses: [],
-    createdAfter: undefined,
+    createdBefore: undefined,
   };
 }
 
@@ -124,8 +124,8 @@ export const FileQuery: MessageFns<FileQuery> = {
       writer.int32(fileUploadStatusToNumber(v));
     }
     writer.join();
-    if (message.createdAfter !== undefined) {
-      Timestamp.encode(toTimestamp(message.createdAfter), writer.uint32(82).fork()).join();
+    if (message.createdBefore !== undefined) {
+      Timestamp.encode(toTimestamp(message.createdBefore), writer.uint32(82).fork()).join();
     }
     return writer;
   },
@@ -224,7 +224,7 @@ export const FileQuery: MessageFns<FileQuery> = {
             break;
           }
 
-          message.createdAfter = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
+          message.createdBefore = fromTimestamp(Timestamp.decode(reader, reader.uint32()));
           continue;
         }
       }
@@ -257,7 +257,9 @@ export const FileQuery: MessageFns<FileQuery> = {
       uploadStatuses: globalThis.Array.isArray(object?.uploadStatuses)
         ? object.uploadStatuses.map((e: any) => fileUploadStatusFromJSON(e))
         : [],
-      createdAfter: isSet(object.createdAfter) ? fromJsonTimestamp(object.createdAfter) : undefined,
+      createdBefore: isSet(object.createdBefore)
+        ? fromJsonTimestamp(object.createdBefore)
+        : undefined,
     };
   },
 
@@ -290,8 +292,8 @@ export const FileQuery: MessageFns<FileQuery> = {
     if (message.uploadStatuses?.length) {
       obj.uploadStatuses = message.uploadStatuses.map((e) => fileUploadStatusToJSON(e));
     }
-    if (message.createdAfter !== undefined) {
-      obj.createdAfter = message.createdAfter.toISOString();
+    if (message.createdBefore !== undefined) {
+      obj.createdBefore = message.createdBefore.toISOString();
     }
     return obj;
   },
@@ -310,7 +312,7 @@ export const FileQuery: MessageFns<FileQuery> = {
     message.extension = object.extension ?? undefined;
     message.uploadStatus = object.uploadStatus ?? undefined;
     message.uploadStatuses = object.uploadStatuses?.map((e) => e) || [];
-    message.createdAfter = object.createdAfter ?? undefined;
+    message.createdBefore = object.createdBefore ?? undefined;
     return message;
   },
 };
